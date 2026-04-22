@@ -332,13 +332,13 @@ export function BotBuilder() {
   };
 
   const toggleWallet = (address: string) => {
-    const current = localConfig.wallets || [];
+    const current = (localConfig.wallets as string[] | null) || [];
     updateField('wallets', current.includes(address) ? current.filter(w => w !== address) : [...current, address]);
   };
 
   const toggleCategory = (cat: string) => {
     if (cat === 'All') return;
-    const current = localConfig.categories || [];
+    const current = (localConfig.categories as string[] | null) || [];
     updateField('categories', current.includes(cat) ? current.filter(c => c !== cat) : [...current, cat]);
   };
 
@@ -380,7 +380,7 @@ export function BotBuilder() {
               {config.mode === 'paper' ? 'PAPER' : 'LIVE'}
             </Badge>
             <span className="text-muted-foreground">
-              Wallets: <span className="text-primary">{(config.wallets || []).length}</span>
+              Wallets: <span className="text-primary">{((config.wallets as string[] | null) || []).length}</span>
             </span>
             {/* Risk gauge inline */}
             <RiskGauge score={riskScore} />
@@ -460,7 +460,7 @@ export function BotBuilder() {
               ) : (
                 <div className="space-y-1.5">
                   {wallets.map(wallet => {
-                    const selected = (config.wallets || []).includes(wallet.address);
+                    const selected = ((config.wallets as string[] | null) || []).includes(wallet.address);
                     const wr = ((wallet.win_rate || 0) * 100);
                     const sparkColor = wr >= 55 ? 'hsl(var(--bull))' : wr >= 45 ? 'hsl(var(--warning))' : 'hsl(var(--bear))';
                     const walletSpark = sparklineData[wallet.address] || [];
@@ -528,7 +528,7 @@ export function BotBuilder() {
                         onClick={() => toggleCategory(cat)}
                         className={cn(
                           'px-2.5 py-1 rounded text-[10px] font-mono uppercase tracking-wider transition-all border',
-                          (config.categories || []).includes(cat)
+                          ((config.categories as string[] | null) || []).includes(cat)
                             ? 'bg-primary/15 text-primary border-primary/30'
                             : 'bg-transparent text-muted-foreground border-border/50 hover:border-primary/20'
                         )}

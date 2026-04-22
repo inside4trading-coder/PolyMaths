@@ -132,7 +132,7 @@ export function LiveFeed({ events, orders, filter, onFilterChange }: LiveFeedPro
       type: e.event_type as FeedItemType,
       message: e.message,
       timestamp: e.timestamp,
-      reasons: e.reasons || [],
+      reasons: (e.reasons as string[] | null) || [],
       details: (e.details as Record<string, any>) || {},
     }))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
