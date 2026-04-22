@@ -121,6 +121,7 @@ export type Database = {
           last_signal_scan_at: string | null
           mode: string
           name: string
+          risk_blocklist: Json | null
           risk_cooldown_minutes: number | null
           risk_daily_loss_limit: number | null
           risk_max_position_per_market: number | null
@@ -149,6 +150,7 @@ export type Database = {
           last_signal_scan_at?: string | null
           mode?: string
           name?: string
+          risk_blocklist?: Json | null
           risk_cooldown_minutes?: number | null
           risk_daily_loss_limit?: number | null
           risk_max_position_per_market?: number | null
@@ -177,6 +179,7 @@ export type Database = {
           last_signal_scan_at?: string | null
           mode?: string
           name?: string
+          risk_blocklist?: Json | null
           risk_cooldown_minutes?: number | null
           risk_daily_loss_limit?: number | null
           risk_max_position_per_market?: number | null
@@ -791,6 +794,8 @@ export type Database = {
       }
       tokens: {
         Row: {
+          change_1h: number | null
+          change_24h: number | null
           created_at: string
           id: string
           market_id: string
@@ -799,6 +804,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          change_1h?: number | null
+          change_24h?: number | null
           created_at?: string
           id: string
           market_id: string
@@ -807,6 +814,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          change_1h?: number | null
+          change_24h?: number | null
           created_at?: string
           id?: string
           market_id?: string
@@ -1055,6 +1064,7 @@ export type Database = {
           total_pnl: number | null
           total_volume: number | null
           unrealized_pnl: number | null
+          unusual_score: number | null
           updated_at: string
           user_id: string
           volume_24h: number | null
@@ -1092,6 +1102,7 @@ export type Database = {
           total_pnl?: number | null
           total_volume?: number | null
           unrealized_pnl?: number | null
+          unusual_score?: number | null
           updated_at?: string
           user_id: string
           volume_24h?: number | null
@@ -1129,6 +1140,7 @@ export type Database = {
           total_pnl?: number | null
           total_volume?: number | null
           unrealized_pnl?: number | null
+          unusual_score?: number | null
           updated_at?: string
           user_id?: string
           volume_24h?: number | null

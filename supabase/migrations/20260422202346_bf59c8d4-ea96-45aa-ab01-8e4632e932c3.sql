@@ -1,0 +1,10 @@
+
+ALTER TABLE public.tokens
+  ADD COLUMN IF NOT EXISTS change_1h NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS change_24h NUMERIC DEFAULT 0;
+
+ALTER TABLE public.wallets
+  ADD COLUMN IF NOT EXISTS unusual_score NUMERIC DEFAULT 0;
+
+ALTER TABLE public.bot_configs
+  ADD COLUMN IF NOT EXISTS risk_blocklist JSONB DEFAULT '[]'::jsonb;
