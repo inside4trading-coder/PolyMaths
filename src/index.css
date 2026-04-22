@@ -1,0 +1,255 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Bloomberg Dark Theme - Default */
+    --background: 228 20% 5%;
+    --foreground: 220 10% 90%;
+
+    --card: 228 18% 7%;
+    --card-foreground: 220 10% 90%;
+
+    --popover: 228 18% 9%;
+    --popover-foreground: 220 10% 90%;
+
+    /* Amber primary - Bloomberg accent */
+    --primary: 38 92% 50%;
+    --primary-foreground: 228 20% 5%;
+
+    --secondary: 228 14% 12%;
+    --secondary-foreground: 220 10% 80%;
+
+    --muted: 228 14% 10%;
+    --muted-foreground: 228 8% 55%;
+
+    --accent: 228 14% 14%;
+    --accent-foreground: 38 92% 50%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 228 12% 14%;
+    --input: 228 14% 12%;
+    --ring: 38 92% 50%;
+
+    --radius: 0.5rem;
+
+    /* Custom terminal colors */
+    --success: 142 71% 45%;
+    --success-foreground: 142 71% 90%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 10%;
+    
+    /* Trading specific */
+    --bull: 142 71% 45%;
+    --bear: 0 72% 51%;
+    --neutral: 228 8% 55%;
+    
+    /* Glow effects */
+    --glow-primary: 0 0 20px hsl(38 92% 50% / 0.3);
+    --glow-success: 0 0 20px hsl(142 71% 45% / 0.3);
+    --glow-destructive: 0 0 20px hsl(0 72% 51% / 0.3);
+
+    /* Chart colors - amber/gold palette */
+    --chart-1: 38 92% 55%;
+    --chart-2: 25 95% 53%;
+    --chart-3: 142 71% 50%;
+    --chart-4: 45 93% 47%;
+    --chart-5: 0 72% 60%;
+
+    --sidebar-background: 228 20% 4%;
+    --sidebar-foreground: 220 10% 65%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 228 20% 5%;
+    --sidebar-accent: 228 14% 10%;
+    --sidebar-accent-foreground: 38 92% 50%;
+    --sidebar-border: 228 12% 12%;
+    --sidebar-ring: 38 92% 50%;
+  }
+
+  /* Light Theme */
+  .light {
+    --background: 40 20% 98%;
+    --foreground: 228 20% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 228 20% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 228 20% 11%;
+
+    /* Amber primary - kept for brand consistency */
+    --primary: 38 92% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 15% 96%;
+    --secondary-foreground: 228 20% 20%;
+
+    --muted: 40 15% 94%;
+    --muted-foreground: 228 8% 40%;
+
+    --accent: 40 15% 92%;
+    --accent-foreground: 38 92% 40%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 12% 88%;
+    --input: 40 12% 91%;
+    --ring: 38 92% 45%;
+
+    /* Custom colors for light mode */
+    --success: 142 71% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 38 92% 10%;
+    
+    /* Trading specific */
+    --bull: 142 71% 36%;
+    --bear: 0 72% 50%;
+    --neutral: 228 8% 45%;
+    
+    /* Glow effects - softer for light mode */
+    --glow-primary: 0 0 15px hsl(38 92% 45% / 0.2);
+    --glow-success: 0 0 15px hsl(142 71% 36% / 0.2);
+    --glow-destructive: 0 0 15px hsl(0 72% 51% / 0.2);
+
+    /* Chart colors */
+    --chart-1: 38 92% 40%;
+    --chart-2: 25 95% 43%;
+    --chart-3: 142 71% 36%;
+    --chart-4: 45 93% 40%;
+    --chart-5: 0 72% 50%;
+
+    --sidebar-background: 40 15% 97%;
+    --sidebar-foreground: 228 20% 30%;
+    --sidebar-primary: 38 92% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 15% 93%;
+    --sidebar-accent-foreground: 38 92% 40%;
+    --sidebar-border: 40 12% 88%;
+    --sidebar-ring: 38 92% 45%;
+  }
+
+  .dark {
+    --background: 228 20% 5%;
+    --foreground: 220 10% 90%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+}
+
+@layer components {
+  .font-mono-data {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .text-bull {
+    @apply text-[hsl(var(--bull))];
+  }
+
+  .text-bear {
+    @apply text-[hsl(var(--bear))];
+  }
+
+  .bg-bull {
+    @apply bg-[hsl(var(--bull))];
+  }
+
+  .bg-bear {
+    @apply bg-[hsl(var(--bear))];
+  }
+
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+
+  .glow-success {
+    box-shadow: var(--glow-success);
+  }
+
+  .terminal-grid {
+    background-image: 
+      linear-gradient(hsl(var(--primary)) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Live indicator pulse */
+  .live-pulse {
+    animation: pulse-live 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-live {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  /* Data update flash */
+  .data-flash {
+    animation: flash-update 0.5s ease-out;
+  }
+
+  @keyframes flash-update {
+    0% {
+      background-color: hsl(var(--primary) / 0.3);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  /* Orderbook depth bar */
+  .depth-bar-bid {
+    background: linear-gradient(90deg, transparent 0%, hsl(var(--bull) / 0.3) 100%);
+  }
+
+  .depth-bar-ask {
+    background: linear-gradient(270deg, transparent 0%, hsl(var(--bear) / 0.3) 100%);
+  }
+}
+
+@layer utilities {
+  .gradient-terminal {
+    background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%);
+  }
+
+  .border-glow {
+    box-shadow: inset 0 1px 0 0 hsl(var(--primary) / 0.1);
+  }
+}

@@ -1,0 +1,2 @@
+ALTER TABLE public.bot_events DROP CONSTRAINT IF EXISTS bot_events_event_type_check;
+ALTER TABLE public.bot_events ADD CONSTRAINT bot_events_event_type_check CHECK (event_type IN ('signal', 'order', 'fill', 'cancel', 'risk', 'error', 'info'));

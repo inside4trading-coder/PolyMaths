@@ -1,0 +1,1 @@
+DELETE FROM price_history WHERE id IN (SELECT id FROM price_history WHERE recorded_at < now() - interval '7 days' LIMIT 200000);
