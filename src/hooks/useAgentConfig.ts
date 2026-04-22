@@ -41,7 +41,7 @@ export function useAgentConfig() {
         id: data.id,
         name: data.name,
         model: data.model,
-        categories: data.categories || DEFAULT_CONFIG.categories,
+        categories: (data.categories as string[] | null) || DEFAULT_CONFIG.categories,
         riskTolerance: data.risk_tolerance || DEFAULT_CONFIG.riskTolerance,
         analysisDepth: data.analysis_depth || DEFAULT_CONFIG.analysisDepth,
       }

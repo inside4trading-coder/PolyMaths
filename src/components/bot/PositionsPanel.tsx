@@ -341,9 +341,9 @@ function PositionRow({ position }: { position: BotPosition }) {
               </span>
             </div>
           )}
-          {(position.reasons || []).length > 0 && (
+          {((position.reasons as string[] | null) || []).length > 0 && (
             <div className="col-span-2 mt-1 flex flex-wrap gap-1">
-              {(position.reasons || []).map((r, i) => (
+              {((position.reasons as string[] | null) || []).map((r, i) => (
                 <span key={i} className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[9px]">
                   {r}
                 </span>
