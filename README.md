@@ -1,73 +1,60 @@
-# Welcome to your Lovable project
+# PolyMath 🧠📈
 
-## Project info
+**PolyMath** is an advanced AI-powered terminal designed specifically for Polymarket prediction markets. It provides professional-grade analytics, equipping users with the tools to track smart money, analyze market sentiment, and gain real-time trading signals leveraging machine learning.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Built by **[Inside4Trading](https://twitter.com/Inside4Trading)**.
 
-## How can I edit this code?
+## 🚀 Key Features
 
-There are several ways of editing your application.
+* **Smart Money Wallet Tracking**: Monitor the activity of profitable and influential trader wallets.
+* **AI Market Sentiment Analysis**: Understand market noise and overall sentiment behind Polymarket events.
+* **Real-time Trading Signals**: Receive data-driven and machine-learning-supported trading signals.
+* **Prediction Market Analytics**: Access deep analytics, volume trends, and historical insights for better decision-making.
+* **Whale Activity Monitoring**: Keep a close eye on large capital movements determining market directions.
 
-**Use Lovable**
+## 🛠️ Technology Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+This project leverages modern frontend technologies for a highly responsive, fast, and feature-rich user experience:
 
-Changes made via Lovable will be committed automatically to this repo.
+* **Framework**: React + TypeScript + Vite
+* **Styling**: Tailwind CSS + shadcn-ui + Framer Motion
+* **State & Data**: React Query + React Router
+* **Backend & DB**: Supabase
+* **Charts & Data Visualization**: Recharts
 
-**Use your preferred IDE**
+## 🔧 Getting Started
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Follow these steps to run the application locally.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Prerequisites
 
-Follow these steps:
+Make sure you have [Node.js](https://nodejs.org/) & npm installed.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Installation
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+1. **Clone the repository:**
+   ```sh
+   git clone <YOUR_REPOSITORY_URL>
+   cd Polymath-legacy
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+2. **Install dependencies:**
+   ```sh
+   npm install
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+3. **Start the development server:**
+   ```sh
+   npm run dev
+   ```
 
-**Edit a file directly in GitHub**
+   The app will typically run at `http://localhost:5173`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+4. **Build for production:**
+   ```sh
+   npm run build
+   ```
 
-**Use GitHub Codespaces**
+## 🤝 Community & Support
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Follow **Inside4Trading** for updates, market insights, and new feature announcements.
