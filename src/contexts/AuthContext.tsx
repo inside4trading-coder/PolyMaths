@@ -75,14 +75,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      // Stale/invalid JWT in localStorage (e.g. from a previous backend) keeps
+      // throwing 403 "invalid claim: missing sub claim". Purge it locally so
+      // the user can sign in again cleanly.
+      const msg = error?.message?.toLowerCase() ?? '';
+      if (error && (msg.includes('invalid claim') || msg.includes('jwt') || msg.includes('sub'))) {
+        try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* ignore */ }
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         fetchProfile(session.user.id).then(setProfile);
       }
-      
+
       setLoading(false);
     });
 
