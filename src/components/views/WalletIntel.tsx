@@ -455,6 +455,55 @@ export function WalletIntel({ initialWallet, onClearInitialWallet }: WalletIntel
             onClose={() => setDetailWallet(null)} 
           />
         )}
+
+        {/* Add Wallet Dialog */}
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Wallet to Watchlist</DialogTitle>
+              <DialogDescription>
+                Enter a Polymarket wallet address (0x…) to start tracking its activity.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Address</label>
+                <Input
+                  value={newAddress}
+                  onChange={(e) => setNewAddress(e.target.value)}
+                  placeholder="0x..."
+                  className="font-mono text-xs"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Label (optional)</label>
+                <Input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  placeholder="Whale #1"
+                  className="text-xs"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <button
+                onClick={() => setAddOpen(false)}
+                className="px-3 py-1.5 rounded text-[11px] font-mono uppercase tracking-wider bg-muted text-muted-foreground hover:bg-muted/70 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddWallet}
+                disabled={adding || !newAddress.trim()}
+                className="flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-mono uppercase tracking-wider bg-primary/20 text-primary hover:bg-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {adding && <Loader2 className="w-3 h-3 animate-spin" />}
+                Add Wallet
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );
