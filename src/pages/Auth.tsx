@@ -164,6 +164,12 @@ const Auth = () => {
 
   // Redirect if already logged in (and not in reset flow)
   useEffect(() => {
+    // If we just came back from an OAuth provider, the URL hash carries the
+    // tokens and onAuthStateChange is mid-flight. Skip the redirect for one
+    // tick to let the session apply cleanly.
+    if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+      return;
+    }
     if (user && !authLoading && view !== 'reset') {
       navigate('/dashboard');
     }
