@@ -1,66 +1,58 @@
-## Diagnóstico (deep dive)
+## Diagnóstico
 
-Observaciones tras revisar `src/pages/Auth.tsx`, `src/integrations/lovable/index.ts`, `src/contexts/AuthContext.tsx` y los logs de auth/edge functions:
+Los 3 indicadores rojos en **Polymarket API Connectivity** ("Data API / Gamma API / CLOB API → Offline") son una **falsa alarma de CORS**, no una caída real. Lo verifiqué desde el servidor:
 
-### 1. Causa más probable: `redirect_uri` apunta a `/auth`
+| Endpoint | Resultado servidor | Resultado navegador |
+|---|---|---|
+| `gamma-api.polymarket.com/markets` | **200 OK** | ❌ bloqueado (sin cabeceras CORS) |
+| `clob.polymarket.com/time` | **200 OK** | ❌ bloqueado (sin cabeceras CORS) |
+| `data-api.polymarket.com/markets` | **404** (endpoint inexistente) | ❌ |
+| `data-api.polymarket.com/trades` | **200 OK** | ❌ bloqueado |
+| Subgraph (Goldsky) | **200 OK** | ✅ (sí permite CORS) → único en verde |
 
-En `src/pages/Auth.tsx` línea 188:
+Y la base de datos **sí tiene datos sincronizados**:
+- 1.134 markets, 202 tokens, 3.372 wallet_positions, 3.036 wallet_activity, 2 wallets, 1 bot config.
 
-```ts
-const result = await lovable.auth.signInWithOAuth('google', {
-  redirect_uri: `${window.location.origin}/auth`,
-});
-```
+**Conclusión:** las APIs funcionan, el sync funciona, los datos están. El problema es que `SystemHealth.tsx` hace `fetch()` directo al dominio de Polymarket desde el navegador, y Polymarket no devuelve `Access-Control-Allow-Origin`. Por eso siempre se ven "Offline".
 
-El broker de OAuth de Lovable Cloud devuelve los tokens al `redirect_uri` **como hash fragment** (`#access_token=...&refresh_token=...`). El SDK `@lovable.dev/cloud-auth-js` espera que esa redirección caiga en una URL donde se vuelva a llamar `signInWithOAuth` (o donde el SDK pueda capturar los tokens). Cuando el usuario aterriza en `/auth`, el hash se descarta (React Router usa rutas, y nuestro `useEffect` de redirect-if-logged-in hace `navigate('/dashboard')` antes de que se procesen los tokens). Resultado: el usuario rebota sin sesión y aparenta que "no funciona".
+## Plan de reparación
 
-La guía oficial recomienda `redirect_uri: window.location.origin` (raíz del dominio) — así el callback del proxy (`/~oauth/callback`) puede completar correctamente y `setSession` se ejecuta con los tokens devueltos en `result.tokens`.
+### 1. Probe de conectividad correcto (raíz del falso "Offline")
+- Crear edge function nueva `health-check` que, server-side (sin CORS), haga ping a:
+  - Gamma API: `GET /markets?limit=1`
+  - CLOB API: `GET /time`
+  - Data API: `GET /trades?limit=1` (corregir el endpoint roto `/markets`)
+  - Subgraph: `POST { _meta { block { number } } }`
+  - Devuelve `{ name, status, latencyMs }` por cada uno.
+- Refactor `useApiConnectivity()` en `src/components/settings/SystemHealth.tsx` para llamar a esa edge function en lugar del `fetch` directo.
+- Resultado: los 4 indicadores reflejarán el estado real (todos verdes según mi prueba).
 
-### 2. Síntoma secundario en logs
+### 2. Verificar pipeline de sincronización end-to-end
+- Disparar manualmente las edge functions clave y mostrarte el resultado:
+  - `sync-markets` (alimenta Market Radar)
+  - `sync-tokens` (precios + change_24h)
+  - `bot-signal-scanner` (alimenta el bot)
+  - `rag-news-signals` (alimenta Predictions)
+  - `polymarket-subgraph` (alimenta Wallet Intel)
+- Revisar logs de cada una y reportar errores si los hay.
 
-Los `auth_logs` muestran `403: invalid claim: missing sub claim` en `GET /user`. Esto indica que la sesión almacenada en `localStorage` está corrupta (probablemente un JWT residual del backend Cloud anterior, antes del reset). Esto provoca también que `polymarket-data` falle con `Auth error: invalid claim: missing sub claim`.
+### 3. Validar cron de mantenimiento
+- Confirmar que `maintenance-cron` (sync periódico) esté agendado vía `pg_cron`. Si no, agendarlo cada 5 min para `sync-markets` + `sync-tokens` y cada 15 min para `bot-signal-scanner`.
 
-### 3. No hay logs OAuth en consola del preview
+### 4. Auto-sync inicial al cargar la app
+- Revisar `useAutoSync.ts` para asegurar que dispare un sync inmediato si la última actualización tiene más de N minutos (evita pantallas vacías tras inactividad).
 
-No se registraron logs ni errores tras pulsar el botón → confirma que se inicia el redirect pero el callback no procesa la sesión.
-
----
-
-## Plan de fix
-
-### A. Corregir `redirect_uri` en `src/pages/Auth.tsx`
-
-Cambiar:
-```ts
-redirect_uri: `${window.location.origin}/auth`
-```
-por:
-```ts
-redirect_uri: window.location.origin
-```
-
-(Conforme al knowledge `cloud-oauth-providers` / `cloud-google-auth`: el broker se encarga del callback en `/~oauth/callback` automáticamente; no hay que apuntar a una ruta de la app.)
-
-### B. Limpiar JWTs huérfanos al cargar `/auth`
-
-Añadir un pequeño guard en `AuthContext` (o `Auth.tsx`) que, si `getSession()` devuelve un error de tipo `bad_jwt` / `invalid claim`, ejecute `supabase.auth.signOut({ scope: 'local' })` para purgar el `localStorage`. Esto evita el bucle 403 que vemos en logs y deja el navegador limpio para el nuevo login.
-
-### C. Evitar redirect prematuro durante el callback OAuth
-
-En `Auth.tsx`, el `useEffect` que redirige a `/dashboard` cuando hay `user` se dispara también justo cuando llegan los tokens de OAuth. Añadir una condición: si `window.location.hash` contiene `access_token`, esperar a que `onAuthStateChange` aplique la sesión antes de navegar (el listener ya lo hace; basta con no hacer `navigate` si el hash aún no se ha procesado — un simple `if (window.location.hash.includes('access_token')) return;` durante un tick).
-
-### D. Verificación post-fix
-
-1. Probar Google sign-in en preview → debe redirigir a Google → volver a la raíz → entrar a `/dashboard` con sesión activa.
-2. Probar también en la URL publicada (`https://bepolymaths.lovable.app`) — según el knowledge, los entornos Dev/Prod tienen credenciales OAuth distintas; si Prod funciona pero preview no, el problema está en config de Cloud Dev y no en código.
-3. Confirmar que desaparece `403: invalid claim: missing sub claim` de los auth logs.
-
----
+### 5. Mensaje de error útil en UI
+- Añadir tooltip en `SystemHealth` que muestre el `latencyMs` y, si falla, el código HTTP real (no solo "Offline").
 
 ## Detalles técnicos
 
-- Archivos a modificar:
-  - `src/pages/Auth.tsx` (handler `handleGoogleSignIn` + guard del `useEffect` de redirect).
-  - `src/contexts/AuthContext.tsx` (limpieza de JWT corrupto en el bootstrap de `getSession`).
-- No tocar `src/integrations/lovable/index.ts` ni `src/integrations/supabase/client.ts` (auto-generados).
-- No requiere cambios en el backend (Lovable Cloud gestiona las credenciales Google por defecto).
+- Nueva ruta: `supabase/functions/health-check/index.ts` con `verify_jwt = false` (es solo lectura pública).
+- Cambia `useApiConnectivity()` para usar `supabase.functions.invoke('health-check')`.
+- Marca el endpoint Data API correcto en cualquier otro lugar del código que use `data-api.polymarket.com/markets` (búsqueda con `rg`).
+- Ningún cambio de schema. Ninguna migración.
+
+## Lo que NO voy a tocar
+- Esquema de base de datos (ya está correcto y poblado).
+- Lógica de bot, agentes IA o RAG (funciona, solo necesita que los crons estén activos).
+- Auth (resuelto en el turno anterior).
