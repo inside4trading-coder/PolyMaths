@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -70,23 +71,17 @@ export function SmartMoneyLeaderboard() {
   const { data: traders, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['polymarket-leaderboard', timePeriod, orderBy, category],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        timePeriod,
-        orderBy,
-        category,
-        limit: '50',
+      // Browser fetches to data-api.polymarket.com are blocked at the network
+      // layer despite valid CORS headers. Proxy through the edge function.
+      const { data, error } = await supabase.functions.invoke('polymarket-data', {
+        body: {
+          action: 'leaderboard',
+          params: { timePeriod, orderBy, category, limit: 50 },
+        },
       });
-      
-      const response = await fetch(
-        `https://data-api.polymarket.com/v1/leaderboard?${params.toString()}`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch leaderboard');
-      }
-      
-      const data = await response.json();
-      return data as LeaderboardTrader[];
+      if (error) throw error;
+      const traders = (data?.data ?? data) as LeaderboardTrader[];
+      return Array.isArray(traders) ? traders : [];
     },
     staleTime: 60000, // 1 minute
     refetchInterval: 300000, // 5 minutes
