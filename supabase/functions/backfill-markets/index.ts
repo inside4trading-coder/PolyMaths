@@ -8,6 +8,61 @@ const corsHeaders = {
 
 const GAMMA_API_BASE = "https://gamma-api.polymarket.com";
 
+const TAG_TO_TOPLEVEL: Array<[RegExp, string]> = [
+  [/^(politics|election|elections|presidential|senate|house|congress|midterms|trump|biden|government|policy)$/i, 'Politics'],
+  [/^(nfl|nba|nhl|mlb|mls|fifa|uefa|soccer|football|basketball|baseball|hockey|tennis|golf|f1|formula-1|sports?|college-football|world-cup|premier-league|la-liga|champions-league)$/i, 'Sports'],
+  [/^(crypto|bitcoin|ethereum|crypto-prices|tokens?|defi|nft|altcoins?|memecoins?)$/i, 'Crypto'],
+  [/^(economy|economic-policy|economics|fed|fed-rates|inflation|jobs|unemployment|tariffs|spending|gdp|recession|fomc|jerome-powell|interest-rates)$/i, 'Economics'],
+  [/^(geopolitics|world|middle-east|russia|ukraine|israel|iran|china|taiwan|war|ceasefire|diplomacy|nato|un)$/i, 'World'],
+  [/^(entertainment|movies?|music|tv|halftime|oscars?|grammys?|emmys?|celebrities?|gaming|gta)$/i, 'Entertainment'],
+];
+
+function deriveTopLevelCategory(tags: Array<{ label?: string; slug?: string }>, fallback?: string | null): string | null {
+  for (const t of tags || []) {
+    for (const [re, top] of TAG_TO_TOPLEVEL) {
+      if ((t.slug && re.test(t.slug)) || (t.label && re.test(String(t.label).replace(/\s+/g, '-')))) {
+        return top;
+      }
+    }
+  }
+  if (fallback) {
+    for (const [re, top] of TAG_TO_TOPLEVEL) {
+      if (re.test(String(fallback).replace(/\s+/g, '-'))) return top;
+    }
+  }
+  return fallback || null;
+}
+
+/** Fetch a market and try to enrich it with parent event tags. Returns the market enriched with `_eventTags`. */
+async function fetchMarketWithTags(conditionId: string): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(`${GAMMA_API_BASE}/markets?condition_id=${conditionId}&limit=1`);
+    if (!res.ok) { await res.text(); return null; }
+    const data = await res.json();
+    const market = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    if (!market) return null;
+
+    // Try to grab parent event with include_tag for the real category
+    const events = (market as any).events;
+    const eventSlug = Array.isArray(events) && events[0] ? events[0].slug : null;
+    let tags: Array<{ label?: string; slug?: string }> = [];
+    if (eventSlug) {
+      try {
+        const evRes = await fetch(`${GAMMA_API_BASE}/events?slug=${encodeURIComponent(eventSlug)}&include_tag=true&limit=1`);
+        if (evRes.ok) {
+          const evData = await evRes.json();
+          const ev = Array.isArray(evData) && evData[0] ? evData[0] : null;
+          if (ev?.tags && Array.isArray(ev.tags)) tags = ev.tags;
+        }
+      } catch { /* ignore */ }
+    }
+    (market as any)._eventTags = tags;
+    return market as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 function parseOutcomes(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.map(String);
   if (typeof raw === 'string') {
@@ -20,18 +75,6 @@ function parseOutcomes(raw: unknown): string[] {
   return ['Yes', 'No'];
 }
 
-async function fetchFromGamma(conditionId: string): Promise<Record<string, unknown> | null> {
-  try {
-    const res = await fetch(`${GAMMA_API_BASE}/markets?condition_id=${conditionId}&limit=1`);
-    if (!res.ok) { await res.text(); return null; }
-    const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) return data[0];
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -41,27 +84,43 @@ serve(async (req) => {
     const url = new URL(req.url);
     const limit = Math.min(Number(url.searchParams.get('limit') || '200'), 500);
     const skipOffset = Number(url.searchParams.get('skip') || '0');
+    const mode = url.searchParams.get('mode') || 'missing'; // 'missing' | 'recategorize'
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Step 1: Get missing condition_ids via DB function (fast!)
-    const { data: missingRows, error: missingErr } = await supabase.rpc('get_missing_condition_ids');
-
     let missingIds: string[] = [];
-    if (missingErr) {
-      console.error('[backfill] RPC error:', missingErr.message);
-      return new Response(JSON.stringify({ success: false, error: missingErr.message }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (mode === 'recategorize') {
+      // Pull condition_ids of markets WITHOUT a top-level category yet.
+      const VALID = ['Politics', 'Sports', 'Crypto', 'Economics', 'World', 'Entertainment'];
+      const { data, error } = await supabase
+        .from('markets')
+        .select('condition_id')
+        .or(`category.is.null,category.not.in.(${VALID.join(',')})`)
+        .not('condition_id', 'is', null)
+        .limit(5000);
+      if (error) {
+        return new Response(JSON.stringify({ success: false, error: error.message }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      missingIds = (data || []).map((r: any) => r.condition_id).filter(Boolean);
+    } else {
+      // Step 1: Get missing condition_ids via DB function (fast!)
+      const { data: missingRows, error: missingErr } = await supabase.rpc('get_missing_condition_ids');
+      if (missingErr) {
+        console.error('[backfill] RPC error:', missingErr.message);
+        return new Response(JSON.stringify({ success: false, error: missingErr.message }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      missingIds = (missingRows as { condition_id: string }[]).map(r => r.condition_id);
     }
-    missingIds = (missingRows as { condition_id: string }[]).map(r => r.condition_id);
 
     const totalMissing = missingIds.length;
-    console.log(`[backfill] Found ${totalMissing} total missing condition_ids, processing skip=${skipOffset} limit=${limit}`);
+    console.log(`[backfill] mode=${mode}: ${totalMissing} candidates, processing skip=${skipOffset} limit=${limit}`);
 
     // Apply pagination
     missingIds = missingIds.slice(skipOffset, skipOffset + limit);
@@ -77,8 +136,13 @@ serve(async (req) => {
       const batch = missingIds.slice(i, i + batchSize);
       const results = await Promise.allSettled(
         batch.map(async (conditionId) => {
-          const market = await fetchFromGamma(conditionId);
+          const market = await fetchMarketWithTags(conditionId);
           if (!market) return null;
+
+          const eventTags = ((market as any)._eventTags || []) as Array<{ label?: string; slug?: string }>;
+          const tagLabels = eventTags.map(t => t.label).filter(Boolean) as string[];
+          const rawCat = (market.category as string | null) || ((market as any).groupItemTitle as string | null) || null;
+          const topLevel = deriveTopLevelCategory(eventTags, rawCat);
 
           const marketRecord = {
             id: String(market.id || market.questionID || conditionId),
@@ -87,7 +151,8 @@ serve(async (req) => {
             question: String(market.question || 'Unknown'),
             description: market.description ? String(market.description) : null,
             outcomes: parseOutcomes(market.outcomes),
-            category: market.category ? String(market.category) : null,
+            category: topLevel,
+            tags: tagLabels,
             end_date: market.endDate || market.end_date_iso || null,
             volume: market.volume ? Number(market.volume) : 0,
             liquidity: market.liquidity ? Number(market.liquidity) : 0,
