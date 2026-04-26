@@ -1,68 +1,66 @@
+## Diagnóstico (deep dive)
 
-## Problem
+Observaciones tras revisar `src/pages/Auth.tsx`, `src/integrations/lovable/index.ts`, `src/contexts/AuthContext.tsx` y los logs de auth/edge functions:
 
-You enabled Lovable Cloud, which created a fresh, empty backend. The previous database (with `markets`, `tokens`, `wallets`, `positions`, `agent_predictions`, etc.) no longer exists. That's why:
+### 1. Causa más probable: `redirect_uri` apunta a `/auth`
 
-1. **Positions Radar shows no data** — the `positions`, `wallets`, and `markets` tables don't exist in the new backend.
-2. **Sync & Discover does nothing** — the edge functions try to write to tables that aren't there.
-3. **The build is broken** — `src/integrations/supabase/types.ts` was regenerated empty, so every `supabase.from('markets')`, `.from('tokens')`, `.from('wallets')`, etc. throws TypeScript errors (`Argument of type '"markets"' is not assignable to parameter of type 'never'`).
+En `src/pages/Auth.tsx` línea 188:
 
-The app code (UI, hooks, edge functions) is fully intact — only the database schema is missing.
+```ts
+const result = await lovable.auth.signInWithOAuth('google', {
+  redirect_uri: `${window.location.origin}/auth`,
+});
+```
 
-## Plan: Recreate the database schema
+El broker de OAuth de Lovable Cloud devuelve los tokens al `redirect_uri` **como hash fragment** (`#access_token=...&refresh_token=...`). El SDK `@lovable.dev/cloud-auth-js` espera que esa redirección caiga en una URL donde se vuelva a llamar `signInWithOAuth` (o donde el SDK pueda capturar los tokens). Cuando el usuario aterriza en `/auth`, el hash se descarta (React Router usa rutas, y nuestro `useEffect` de redirect-if-logged-in hace `navigate('/dashboard')` antes de que se procesen los tokens). Resultado: el usuario rebota sin sesión y aparenta que "no funciona".
 
-I'll create a single migration that rebuilds every table the app references, with proper RLS, indexes, and the helper structures the edge functions expect.
+La guía oficial recomienda `redirect_uri: window.location.origin` (raíz del dominio) — así el callback del proxy (`/~oauth/callback`) puede completar correctamente y `setSession` se ejecuta con los tokens devueltos en `result.tokens`.
 
-### Tables to create
+### 2. Síntoma secundario en logs
 
-Inferred from the edge functions and components:
+Los `auth_logs` muestran `403: invalid claim: missing sub claim` en `GET /user`. Esto indica que la sesión almacenada en `localStorage` está corrupta (probablemente un JWT residual del backend Cloud anterior, antes del reset). Esto provoca también que `polymarket-data` falle con `Auth error: invalid claim: missing sub claim`.
 
-- **`markets`** — id, condition_id, question, description, slug, outcomes (jsonb), category, tags (jsonb), end_date, volume, volume_24h, liquidity, liquidity_score, closed, created_at, updated_at
-- **`tokens`** — id, market_id, outcome, price, updated_at
-- **`wallets`** — address (pk), label, owner_user_id, is_whale, created_at, updated_at
-- **`positions`** — id, wallet_address, market_id, token_id, outcome, size, avg_price, current_price, realized_pnl, unrealized_pnl, status, updated_at
-- **`watchlist`** — user_id, wallet_address (per-user wallet tracking)
-- **`agent_predictions`** — id, market_id, market_question, recommendation, confidence, analysis, model_used, tokens_used, created_at
-- **`market_sentiment`** — id, market_id, score, signals (jsonb), created_at
-- **`rag_signals`** — id, market_id, headline, source, url, sentiment, summary, created_at
-- **`bot_sessions`**, **`bot_orders`**, **`bot_positions`**, **`bot_signals`** — bot builder/monitor tables
-- **`agent_configs`** — per-user agent settings
-- **`wallet_activity`**, **`wallet_sparklines`**, **`wallet_winrates`** — wallet analytics caches
+### 3. No hay logs OAuth en consola del preview
 
-### Roles & RLS
+No se registraron logs ni errores tras pulsar el botón → confirma que se inicia el redirect pero el callback no procesa la sesión.
 
-- `app_role` enum (`admin`, `user`) + `user_roles` table + `has_role()` security-definer function (per the security guidelines).
-- RLS on every table:
-  - **Public read** for market data (`markets`, `tokens`, `agent_predictions`, `market_sentiment`, `rag_signals`) — needed so the radar works without login.
-  - **Per-user** for `watchlist`, `bot_sessions`, `agent_configs` (only owner can read/write).
-  - **Authenticated read + service-role write** for `wallets`, `positions`, `wallet_activity` (edge functions use service role to populate, users read).
+---
 
-### Auth
+## Plan de fix
 
-The `Index.tsx` redirects to `/` when the user isn't logged in, but `Auth.tsx` already exists. I'll verify the auth flow still works against the new backend (no schema changes needed on `auth.*`), and ensure the user can sign up and reach `/dashboard`.
+### A. Corregir `redirect_uri` en `src/pages/Auth.tsx`
 
-### After migration
+Cambiar:
+```ts
+redirect_uri: `${window.location.origin}/auth`
+```
+por:
+```ts
+redirect_uri: window.location.origin
+```
 
-1. `src/integrations/supabase/types.ts` regenerates automatically from the new schema → all 200+ TS errors disappear.
-2. The "Sync & Discover" button calls `sync-markets` / `backfill-markets` edge functions, which will populate `markets` + `tokens` from the Polymarket Gamma API.
-3. To see positions in the radar, you'll add a wallet via Wallet Intel → it gets stored in `watchlist` → the position-sync edge functions populate `positions`.
+(Conforme al knowledge `cloud-oauth-providers` / `cloud-google-auth`: el broker se encarga del callback en `/~oauth/callback` automáticamente; no hay que apuntar a una ruta de la app.)
 
-### What I will NOT change
+### B. Limpiar JWTs huérfanos al cargar `/auth`
 
-- No UI changes. No edge function logic changes (they already target the right table names).
-- No removal of existing features.
+Añadir un pequeño guard en `AuthContext` (o `Auth.tsx`) que, si `getSession()` devuelve un error de tipo `bad_jwt` / `invalid claim`, ejecute `supabase.auth.signOut({ scope: 'local' })` para purgar el `localStorage`. Esto evita el bucle 403 que vemos en logs y deja el navegador limpio para el nuevo login.
 
-### Technical notes
+### C. Evitar redirect prematuro durante el callback OAuth
 
-- Use `gen_random_uuid()` for primary keys where the source ID isn't external.
-- Use `jsonb` for `outcomes`, `tags`, `signals` (matches the `ensureArray` helper in edge functions).
-- Add indexes on `positions(wallet_address)`, `positions(market_id)`, `tokens(market_id)`, `markets(closed, volume_24h)` for radar query performance.
-- Triggers: `updated_at` auto-update on `markets`, `tokens`, `positions`, `wallets`.
-- No CHECK constraints with `now()` (per guidelines) — use validation triggers if needed.
+En `Auth.tsx`, el `useEffect` que redirige a `/dashboard` cuando hay `user` se dispara también justo cuando llegan los tokens de OAuth. Añadir una condición: si `window.location.hash` contiene `access_token`, esperar a que `onAuthStateChange` aplique la sesión antes de navegar (el listener ya lo hace; basta con no hacer `navigate` si el hash aún no se ha procesado — un simple `if (window.location.hash.includes('access_token')) return;` durante un tick).
 
-### Steps
+### D. Verificación post-fix
 
-1. Run the migration to create all tables, enums, RLS policies, indexes, and triggers.
-2. Wait for `types.ts` to regenerate → build errors clear.
-3. You log in (or sign up) → click **Sync & Discover** → markets populate.
-4. Add a wallet in **Wallet Intel** → positions populate in the radar.
+1. Probar Google sign-in en preview → debe redirigir a Google → volver a la raíz → entrar a `/dashboard` con sesión activa.
+2. Probar también en la URL publicada (`https://bepolymaths.lovable.app`) — según el knowledge, los entornos Dev/Prod tienen credenciales OAuth distintas; si Prod funciona pero preview no, el problema está en config de Cloud Dev y no en código.
+3. Confirmar que desaparece `403: invalid claim: missing sub claim` de los auth logs.
+
+---
+
+## Detalles técnicos
+
+- Archivos a modificar:
+  - `src/pages/Auth.tsx` (handler `handleGoogleSignIn` + guard del `useEffect` de redirect).
+  - `src/contexts/AuthContext.tsx` (limpieza de JWT corrupto en el bootstrap de `getSession`).
+- No tocar `src/integrations/lovable/index.ts` ni `src/integrations/supabase/client.ts` (auto-generados).
+- No requiere cambios en el backend (Lovable Cloud gestiona las credenciales Google por defecto).
