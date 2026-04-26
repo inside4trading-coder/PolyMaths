@@ -229,37 +229,79 @@ const CATEGORY_TYPE_MAP: Record<string, string> = {
   'cabinet': 'Politics',
   'party': 'Politics',
   'government': 'Politics',
+  'policy': 'Politics',
   // Sports
   'nfl': 'Sports',
   'nba': 'Sports',
   'nhl': 'Sports',
+  'mlb': 'Sports',
+  'mls': 'Sports',
   'fifa': 'Sports',
   'uefa': 'Sports',
   'premier league': 'Sports',
+  'premier-league': 'Sports',
   'la liga': 'Sports',
+  'la-liga': 'Sports',
   'bundesliga': 'Sports',
   'serie a': 'Sports',
   'ligue 1': 'Sports',
   'super bowl': 'Sports',
   'champion': 'Sports',
+  'champions-league': 'Sports',
   'mvp': 'Sports',
   'rookie': 'Sports',
   'coach': 'Sports',
   'college football': 'Sports',
+  'college-football': 'Sports',
   'afc': 'Sports',
   'nfc': 'Sports',
   'world cup': 'Sports',
+  'world-cup': 'Sports',
+  'sport': 'Sports',
+  'sports': 'Sports',
+  'soccer': 'Sports',
+  'football': 'Sports',
+  'basketball': 'Sports',
+  'baseball': 'Sports',
+  'hockey': 'Sports',
+  'tennis': 'Sports',
+  'golf': 'Sports',
+  'f1': 'Sports',
+  'formula-1': 'Sports',
   // Crypto
   'crypto': 'Crypto',
   'bitcoin': 'Crypto',
   'ethereum': 'Crypto',
   'token': 'Crypto',
+  'tokens': 'Crypto',
+  'crypto-prices': 'Crypto',
+  'defi': 'Crypto',
+  'nft': 'Crypto',
+  'altcoin': 'Crypto',
+  'altcoins': 'Crypto',
+  'memecoin': 'Crypto',
+  'memecoins': 'Crypto',
   'microstrategy': 'Crypto',
   'megaeth': 'Crypto',
   'infinex': 'Crypto',
   'fdv': 'Crypto',
   'market cap': 'Crypto',
   // Economics
+  'economy': 'Economics',
+  'economics': 'Economics',
+  'economic-policy': 'Economics',
+  'economic policy': 'Economics',
+  'fed': 'Economics',
+  'fed-rates': 'Economics',
+  'fed rates': 'Economics',
+  'fomc': 'Economics',
+  'jerome-powell': 'Economics',
+  'jerome powell': 'Economics',
+  'interest-rates': 'Economics',
+  'interest rates': 'Economics',
+  'recession': 'Economics',
+  'gdp': 'Economics',
+  'unemployment': 'Economics',
   'inflation': 'Economics',
   'tariffs': 'Economics',
   'revenue': 'Economics',
@@ -267,6 +309,15 @@ const CATEGORY_TYPE_MAP: Record<string, string> = {
   'doge': 'Economics',
   'jobs': 'Economics',
   // World
+  'world': 'World',
+  'geopolitics': 'World',
+  'middle-east': 'World',
+  'middle east': 'World',
+  'china': 'World',
+  'taiwan': 'World',
+  'nato': 'World',
+  'diplomacy': 'World',
+  'diplomacy-ceasefire': 'World',
   'russia': 'World',
   'ukraine': 'World',
   'israel': 'World',
@@ -275,18 +326,52 @@ const CATEGORY_TYPE_MAP: Record<string, string> = {
   'ceasefire': 'World',
   'war': 'World',
   // Entertainment
+  'entertainment': 'Entertainment',
+  'movies': 'Entertainment',
+  'movie': 'Entertainment',
+  'music': 'Entertainment',
+  'tv': 'Entertainment',
+  'oscar': 'Entertainment',
+  'oscars': 'Entertainment',
+  'grammys': 'Entertainment',
+  'emmys': 'Entertainment',
+  'celebrities': 'Entertainment',
+  'celebrity': 'Entertainment',
+  'gaming': 'Entertainment',
   'halftime': 'Entertainment',
   'perform': 'Entertainment',
   'gta': 'Entertainment',
   'weinstein': 'Entertainment',
 };
 
-export function categorizeCategoryType(category: string | null | undefined): string {
-  if (!category) return 'Other';
-  const lower = category.toLowerCase();
-  for (const [keyword, type] of Object.entries(CATEGORY_TYPE_MAP)) {
-    if (lower.includes(keyword)) {
-      return type;
+/**
+ * Map a raw Polymarket `category` (and optionally an array of event tags)
+ * to one of our 7 top-level categories. Falls back to 'Other' only when
+ * neither category nor any tag matches.
+ */
+export function categorizeCategoryType(
+  category: string | null | undefined,
+  tags?: string[] | null,
+): string {
+  const tryMatch = (raw: string | null | undefined): string | null => {
+    if (!raw) return null;
+    const lower = String(raw).toLowerCase().trim();
+    // Exact match first (handles slugs like "fed-rates")
+    if (CATEGORY_TYPE_MAP[lower]) return CATEGORY_TYPE_MAP[lower];
+    // Substring match
+    for (const [keyword, type] of Object.entries(CATEGORY_TYPE_MAP)) {
+      if (lower.includes(keyword)) return type;
+    }
+    return null;
+  };
+
+  const fromCat = tryMatch(category);
+  if (fromCat) return fromCat;
+
+  if (tags && tags.length > 0) {
+    for (const t of tags) {
+      const m = tryMatch(t);
+      if (m) return m;
     }
   }
   return 'Other';
@@ -848,6 +933,7 @@ export interface WalletPosition {
   market_id: string | null;
   market_question: string;
   market_category: string | null;
+  market_tags: string[];
   market_closed: boolean;
   outcome: string;
   side: string;
@@ -991,18 +1077,30 @@ export function useWalletPositions(filters: PositionsFilters = { hideClosedMarke
 
       // Get market data for condition_ids (to check if closed, get category, etc.)
       const conditionIds = [...new Set(dbPositions.map(p => p.condition_id).filter(Boolean))];
-      const marketsRows: Array<{ id: string; condition_id: string; question: string; category: string | null; closed: boolean | null; volume_24h: number | null; liquidity: number | null; }> = [];
+      const marketsRows: Array<{ id: string; condition_id: string; question: string; category: string | null; tags: unknown; closed: boolean | null; volume_24h: number | null; liquidity: number | null; }> = [];
 
       for (const chunk of chunkArray(conditionIds, 200)) {
         const { data, error } = await supabase
           .from('markets')
-          .select('id, condition_id, question, category, closed, volume_24h, liquidity')
+          .select('id, condition_id, question, category, tags, closed, volume_24h, liquidity')
           .in('condition_id', chunk);
         if (error) throw error;
         if (data) marketsRows.push(...data);
       }
 
       const marketsMap = new Map(marketsRows.map(m => [m.condition_id, m]));
+
+      const normalizeTags = (raw: unknown): string[] => {
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+        if (typeof raw === 'string') {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+          } catch { /* ignore */ }
+        }
+        return [];
+      };
 
       // Get token prices for positions (for Chance column)
       const assetIds = [...new Set(dbPositions.map(p => p.asset_id).filter(Boolean))];
@@ -1027,6 +1125,7 @@ export function useWalletPositions(filters: PositionsFilters = { hideClosedMarke
         const wallet = walletsMap.get(pos.wallet_address);
         const market = marketsMap.get(pos.condition_id);
         const token = tokensMap.get(pos.asset_id || '');
+        const marketTags = normalizeTags(market?.tags);
         
         // Position is "sold" if size is very small
         const isSold = (pos.size || 0) < 0.01;
@@ -1050,7 +1149,7 @@ export function useWalletPositions(filters: PositionsFilters = { hideClosedMarke
         
         // Category filter: check if market category matches selected types
         if (filters.categories && filters.categories.length > 0) {
-          const marketCategoryType = categorizeCategoryType(market?.category);
+          const marketCategoryType = categorizeCategoryType(market?.category, marketTags);
           if (!filters.categories.includes(marketCategoryType)) continue;
         }
         
@@ -1063,6 +1162,7 @@ export function useWalletPositions(filters: PositionsFilters = { hideClosedMarke
           market_id: market?.id || pos.condition_id || '',
           market_question: pos.title || market?.question || 'Unknown Market',
           market_category: market?.category || null,
+          market_tags: marketTags,
           market_closed: market?.closed || false,
           outcome: pos.outcome || 'Unknown',
           side: 'BUY', // Positions are always long in Polymarket
