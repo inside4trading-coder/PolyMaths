@@ -80,7 +80,7 @@ export function SmartMoneyLeaderboard() {
         },
       });
       if (error) throw error;
-      const traders = (data?.data ?? data) as LeaderboardTrader[];
+      const traders = (data?.traders ?? []) as LeaderboardTrader[];
       return Array.isArray(traders) ? traders : [];
     },
     staleTime: 60000, // 1 minute
