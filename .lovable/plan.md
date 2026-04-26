@@ -1,58 +1,56 @@
-## Diagnóstico
+## Problem
 
-Los 3 indicadores rojos en **Polymarket API Connectivity** ("Data API / Gamma API / CLOB API → Offline") son una **falsa alarma de CORS**, no una caída real. Lo verifiqué desde el servidor:
+The **Leaderboard** tab in PolyAgents shows "No traders found / 0 / $0". Browser network logs show:
 
-| Endpoint | Resultado servidor | Resultado navegador |
+```
+GET https://data-api.polymarket.com/v1/leaderboard?...
+Origin: https://...lovableproject.com
+Error: Failed to fetch
+```
+
+Server-side `curl` to the same URL returns valid data (200, `access-control-allow-origin: *`), so the API itself works. The browser request is being blocked at the network layer — same root cause as the previously fixed `SystemHealth` "Offline" issue. The fix pattern is the same: **proxy via an edge function**.
+
+A scan of the rest of PolyAgents confirms this is the **only** broken module:
+
+| Tab | Data source | Status |
 |---|---|---|
-| `gamma-api.polymarket.com/markets` | **200 OK** | ❌ bloqueado (sin cabeceras CORS) |
-| `clob.polymarket.com/time` | **200 OK** | ❌ bloqueado (sin cabeceras CORS) |
-| `data-api.polymarket.com/markets` | **404** (endpoint inexistente) | ❌ |
-| `data-api.polymarket.com/trades` | **200 OK** | ❌ bloqueado |
-| Subgraph (Goldsky) | **200 OK** | ✅ (sí permite CORS) → único en verde |
+| Analyzer | `polymarket-agents` edge fn (Lovable AI) | OK |
+| RAG | `rag-news-signals` edge fn | OK |
+| **Leaderboard** | **Direct browser fetch to `data-api.polymarket.com`** | **BROKEN** |
+| Forecast | `markets`/`tokens`/`rag_signals` tables | OK |
+| Sentiment | `sentiment-tracker` edge fn + `market_sentiment` table | OK |
+| History | `agent_predictions` table | OK |
 
-Y la base de datos **sí tiene datos sincronizados**:
-- 1.134 markets, 202 tokens, 3.372 wallet_positions, 3.036 wallet_activity, 2 wallets, 1 bot config.
+A scan of `src/` shows Leaderboard is the only client-side direct call to `polymarket.com` REST APIs (the orderbook WebSocket is unaffected).
 
-**Conclusión:** las APIs funcionan, el sync funciona, los datos están. El problema es que `SystemHealth.tsx` hace `fetch()` directo al dominio de Polymarket desde el navegador, y Polymarket no devuelve `Access-Control-Allow-Origin`. Por eso siempre se ven "Offline".
+## Fix
 
-## Plan de reparación
+### 1. Add a `polymarket-leaderboard` action to the existing `polymarket-data` edge function
 
-### 1. Probe de conectividad correcto (raíz del falso "Offline")
-- Crear edge function nueva `health-check` que, server-side (sin CORS), haga ping a:
-  - Gamma API: `GET /markets?limit=1`
-  - CLOB API: `GET /time`
-  - Data API: `GET /trades?limit=1` (corregir el endpoint roto `/markets`)
-  - Subgraph: `POST { _meta { block { number } } }`
-  - Devuelve `{ name, status, latencyMs }` por cada uno.
-- Refactor `useApiConnectivity()` en `src/components/settings/SystemHealth.tsx` para llamar a esa edge function en lugar del `fetch` directo.
-- Resultado: los 4 indicadores reflejarán el estado real (todos verdes según mi prueba).
+Server-side proxy that:
+- Accepts `{ timePeriod, orderBy, category, limit }`
+- Calls `https://data-api.polymarket.com/v1/leaderboard?...`
+- Returns the JSON array unchanged
+- Uses standard CORS headers
+- 60s in-memory cache to avoid hammering the upstream
 
-### 2. Verificar pipeline de sincronización end-to-end
-- Disparar manualmente las edge functions clave y mostrarte el resultado:
-  - `sync-markets` (alimenta Market Radar)
-  - `sync-tokens` (precios + change_24h)
-  - `bot-signal-scanner` (alimenta el bot)
-  - `rag-news-signals` (alimenta Predictions)
-  - `polymarket-subgraph` (alimenta Wallet Intel)
-- Revisar logs de cada una y reportar errores si los hay.
+(Adding a case to the existing function is simpler than a new function, and `polymarket-data` already has the right CORS + base URL setup.)
 
-### 3. Validar cron de mantenimiento
-- Confirmar que `maintenance-cron` (sync periódico) esté agendado vía `pg_cron`. Si no, agendarlo cada 5 min para `sync-markets` + `sync-tokens` y cada 15 min para `bot-signal-scanner`.
+### 2. Update `SmartMoneyLeaderboard.tsx`
 
-### 4. Auto-sync inicial al cargar la app
-- Revisar `useAutoSync.ts` para asegurar que dispare un sync inmediato si la última actualización tiene más de N minutos (evita pantallas vacías tras inactividad).
+Replace the direct `fetch()` with `supabase.functions.invoke('polymarket-data', { body: { action: 'leaderboard', params: { timePeriod, orderBy, category, limit: 50 } } })`.
 
-### 5. Mensaje de error útil en UI
-- Añadir tooltip en `SystemHealth` que muestre el `latencyMs` y, si falla, el código HTTP real (no solo "Offline").
+Keep all UI, filters, stats, and detail panel logic identical — only the data fetch changes.
 
-## Detalles técnicos
+### 3. Minor cleanup
 
-- Nueva ruta: `supabase/functions/health-check/index.ts` con `verify_jwt = false` (es solo lectura pública).
-- Cambia `useApiConnectivity()` para usar `supabase.functions.invoke('health-check')`.
-- Marca el endpoint Data API correcto en cualquier otro lugar del código que use `data-api.polymarket.com/markets` (búsqueda con `rg`).
-- Ningún cambio de schema. Ninguna migración.
+- Fix the React warning `Function components cannot be given refs` from `Skeleton` inside `SmartMoneyLeaderboard` by wrapping the `Skeleton` component with `React.forwardRef` in `src/components/ui/skeleton.tsx` (low priority but visible in console).
 
-## Lo que NO voy a tocar
-- Esquema de base de datos (ya está correcto y poblado).
-- Lógica de bot, agentes IA o RAG (funciona, solo necesita que los crons estén activos).
-- Auth (resuelto en el turno anterior).
+## Verification
+
+After deploy:
+1. Open `/dashboard` → PolyAgents → Leaderboard
+2. Stats cards populate (Top Traders ~50, Total Profit, Volume, Avg Profit)
+3. List of traders renders with avatars, ranks, P/L
+4. Switching Today/Week/Month/All Time and Profit/Volume re-fetches correctly
+5. Selecting a trader opens the right-hand profile panel with working Polymarket / PolygonScan links

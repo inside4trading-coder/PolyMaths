@@ -95,6 +95,39 @@ serve(async (req) => {
     let result;
 
     switch (action) {
+      case 'leaderboard': {
+        // Proxy for Polymarket Smart Money Leaderboard (browser fetches are blocked)
+        const {
+          timePeriod = 'WEEK',
+          orderBy = 'PNL',
+          category = 'OVERALL',
+          limit = 50,
+        } = params;
+
+        const qs = new URLSearchParams({
+          timePeriod: String(timePeriod),
+          orderBy: String(orderBy),
+          category: String(category),
+          limit: String(limit),
+        });
+
+        const url = `${DATA_API_BASE}/v1/leaderboard?${qs.toString()}`;
+        console.log(`[leaderboard] Fetching: ${url}`);
+
+        const res = await fetch(url);
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          console.error(`[leaderboard] Upstream ${res.status}: ${text.slice(0, 200)}`);
+          throw new Error(`Polymarket leaderboard error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        const traders = Array.isArray(data) ? data : [];
+        console.log(`[leaderboard] Returned ${traders.length} traders`);
+        result = { traders };
+        break;
+      }
+
       case 'debug_pnl_sources': {
         // Debug: Fetch all P/L related data from Polymarket APIs
         const { wallet_address } = params;
