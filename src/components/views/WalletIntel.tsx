@@ -87,9 +87,6 @@ export function WalletIntel({ initialWallet, onClearInitialWallet }: WalletIntel
 
   const { user } = useAuth();
   const { data: wallets = [], isLoading: walletsLoading } = useWallets(true, user?.id);
-  const toggleWatch = useToggleWalletWatch();
-  const syncSingleWallet = useSyncWalletFromPolymarket();
-
   const handleAddWallet = async () => {
     const address = newAddress.trim().toLowerCase();
     if (!user) {
