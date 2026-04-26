@@ -19,6 +19,16 @@ import {
   type ActivityFilterType 
 } from '@/hooks/usePolymarket';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import { 
   Eye, EyeOff, Plus, Copy, ExternalLink, AlertTriangle,
   TrendingUp, Users, Activity, Zap, Loader2, Flame, Filter,
@@ -63,6 +73,10 @@ export function WalletIntel({ initialWallet, onClearInitialWallet }: WalletIntel
   const [activityFilter, setActivityFilter] = useState<ActivityFilterType>('all');
   const [activityLimit, setActivityLimit] = useState<number>(150);
   const [showLimitDropdown, setShowLimitDropdown] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newAddress, setNewAddress] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     if (initialWallet) {
@@ -73,6 +87,36 @@ export function WalletIntel({ initialWallet, onClearInitialWallet }: WalletIntel
 
   const { user } = useAuth();
   const { data: wallets = [], isLoading: walletsLoading } = useWallets(true, user?.id);
+  const toggleWatch = useToggleWalletWatch();
+  const syncSingleWallet = useSyncWalletFromPolymarket();
+
+  const handleAddWallet = async () => {
+    const address = newAddress.trim().toLowerCase();
+    if (!user) {
+      toast.error('You must be signed in to add a wallet');
+      return;
+    }
+    if (!/^0x[a-f0-9]{40}$/.test(address)) {
+      toast.error('Invalid Ethereum address');
+      return;
+    }
+    setAdding(true);
+    try {
+      await toggleWatch.mutateAsync({ address, isWatched: true, userId: user.id });
+      if (newLabel.trim()) {
+        await supabase.from('wallets').update({ label: newLabel.trim() }).eq('address', address).eq('user_id', user.id);
+      }
+      toast.success('Wallet added to watchlist');
+      syncSingleWallet.mutate({ walletAddress: address, limit: 500 });
+      setNewAddress('');
+      setNewLabel('');
+      setAddOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to add wallet');
+    } finally {
+      setAdding(false);
+    }
+  };
   const { data: activities = [], isLoading: activitiesLoading, refetch: refetchActivities } = useActivityFeed({
     walletAddress: selectedWallet || undefined,
     filter: activityFilter,
