@@ -164,6 +164,12 @@ const Auth = () => {
 
   // Redirect if already logged in (and not in reset flow)
   useEffect(() => {
+    // If we just came back from an OAuth provider, the URL hash carries the
+    // tokens and onAuthStateChange is mid-flight. Skip the redirect for one
+    // tick to let the session apply cleanly.
+    if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+      return;
+    }
     if (user && !authLoading && view !== 'reset') {
       navigate('/dashboard');
     }
@@ -186,7 +192,7 @@ const Auth = () => {
     setError(null);
     try {
       const result = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: `${window.location.origin}/auth`,
+        redirect_uri: window.location.origin,
       });
       if (result.error) {
         setError(result.error.message || 'Google sign-in failed. Please try again.');
