@@ -1077,18 +1077,30 @@ export function useWalletPositions(filters: PositionsFilters = { hideClosedMarke
 
       // Get market data for condition_ids (to check if closed, get category, etc.)
       const conditionIds = [...new Set(dbPositions.map(p => p.condition_id).filter(Boolean))];
-      const marketsRows: Array<{ id: string; condition_id: string; question: string; category: string | null; closed: boolean | null; volume_24h: number | null; liquidity: number | null; }> = [];
+      const marketsRows: Array<{ id: string; condition_id: string; question: string; category: string | null; tags: unknown; closed: boolean | null; volume_24h: number | null; liquidity: number | null; }> = [];
 
       for (const chunk of chunkArray(conditionIds, 200)) {
         const { data, error } = await supabase
           .from('markets')
-          .select('id, condition_id, question, category, closed, volume_24h, liquidity')
+          .select('id, condition_id, question, category, tags, closed, volume_24h, liquidity')
           .in('condition_id', chunk);
         if (error) throw error;
         if (data) marketsRows.push(...data);
       }
 
       const marketsMap = new Map(marketsRows.map(m => [m.condition_id, m]));
+
+      const normalizeTags = (raw: unknown): string[] => {
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw.map(String).filter(Boolean);
+        if (typeof raw === 'string') {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+          } catch { /* ignore */ }
+        }
+        return [];
+      };
 
       // Get token prices for positions (for Chance column)
       const assetIds = [...new Set(dbPositions.map(p => p.asset_id).filter(Boolean))];
@@ -1113,6 +1125,7 @@ export function useWalletPositions(filters: PositionsFilters = { hideClosedMarke
         const wallet = walletsMap.get(pos.wallet_address);
         const market = marketsMap.get(pos.condition_id);
         const token = tokensMap.get(pos.asset_id || '');
+        const marketTags = normalizeTags(market?.tags);
         
         // Position is "sold" if size is very small
         const isSold = (pos.size || 0) < 0.01;
@@ -1136,7 +1149,7 @@ export function useWalletPositions(filters: PositionsFilters = { hideClosedMarke
         
         // Category filter: check if market category matches selected types
         if (filters.categories && filters.categories.length > 0) {
-          const marketCategoryType = categorizeCategoryType(market?.category);
+          const marketCategoryType = categorizeCategoryType(market?.category, marketTags);
           if (!filters.categories.includes(marketCategoryType)) continue;
         }
         
@@ -1149,6 +1162,7 @@ export function useWalletPositions(filters: PositionsFilters = { hideClosedMarke
           market_id: market?.id || pos.condition_id || '',
           market_question: pos.title || market?.question || 'Unknown Market',
           market_category: market?.category || null,
+          market_tags: marketTags,
           market_closed: market?.closed || false,
           outcome: pos.outcome || 'Unknown',
           side: 'BUY', // Positions are always long in Polymarket
