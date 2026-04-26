@@ -46,6 +46,8 @@ interface ApiEndpointStatus {
   url: string;
   status: 'ok' | 'degraded' | 'down';
   latencyMs: number | null;
+  httpStatus?: number | null;
+  error?: string;
 }
 
 // ─── Data Hooks ───────────────────────────────────────────────────────
@@ -226,47 +228,24 @@ function useApiConnectivity() {
   return useQuery({
     queryKey: ['system-health', 'api-connectivity'],
     queryFn: async (): Promise<ApiEndpointStatus[]> => {
-      const endpoints = [
-        { name: 'Data API', url: 'https://data-api.polymarket.com/markets?limit=1' },
-        { name: 'Gamma API', url: 'https://gamma-api.polymarket.com/markets?limit=1' },
-        { name: 'CLOB API', url: 'https://clob.polymarket.com/time' },
-        { name: 'Subgraph', url: 'https://api.goldsky.com/api/public/project_cl6mb8i9h0003e201j6li0diw/subgraphs/activity-subgraph/0.0.4/gn', method: 'POST' as const },
+      // Probe runs server-side via edge function to bypass browser CORS.
+      // Polymarket APIs do not return Access-Control-Allow-Origin, so a
+      // direct browser fetch always reports "Offline" even when healthy.
+      try {
+        const { data, error } = await supabase.functions.invoke('health-check');
+        if (error) throw error;
+        const results = (data?.results || []) as ApiEndpointStatus[];
+        if (results.length > 0) return results;
+      } catch (e) {
+        console.error('[SystemHealth] health-check failed', e);
+      }
+      // Fallback: surface the failure rather than silently empty.
+      return [
+        { name: 'Data API', url: '', status: 'down', latencyMs: null, error: 'probe unavailable' },
+        { name: 'Gamma API', url: '', status: 'down', latencyMs: null, error: 'probe unavailable' },
+        { name: 'CLOB API', url: '', status: 'down', latencyMs: null, error: 'probe unavailable' },
+        { name: 'Subgraph', url: '', status: 'down', latencyMs: null, error: 'probe unavailable' },
       ];
-
-      const results = await Promise.allSettled(
-        endpoints.map(async (ep) => {
-          const start = performance.now();
-          try {
-            const fetchOpts: RequestInit = {
-              method: (ep as any).method || 'GET',
-              signal: AbortSignal.timeout(8000),
-              ...((ep as any).method === 'POST' ? {
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: '{ _meta { block { number } } }' }),
-              } : {}),
-            };
-            const res = await fetch(ep.url, fetchOpts);
-            const latencyMs = Math.round(performance.now() - start);
-            return {
-              name: ep.name,
-              url: ep.url,
-              status: res.ok ? (latencyMs > 3000 ? 'degraded' as const : 'ok' as const) : 'degraded' as const,
-              latencyMs,
-            };
-          } catch {
-            return {
-              name: ep.name,
-              url: ep.url,
-              status: 'down' as const,
-              latencyMs: null,
-            };
-          }
-        })
-      );
-
-      return results.map((r) =>
-        r.status === 'fulfilled' ? r.value : { name: 'Unknown', url: '', status: 'down' as const, latencyMs: null }
-      );
     },
     staleTime: 30_000,
   });
