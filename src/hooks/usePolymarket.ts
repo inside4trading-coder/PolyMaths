@@ -933,6 +933,7 @@ export interface WalletPosition {
   market_id: string | null;
   market_question: string;
   market_category: string | null;
+  market_tags: string[];
   market_closed: boolean;
   outcome: string;
   side: string;
