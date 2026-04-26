@@ -285,7 +285,10 @@ export function WalletIntel({ initialWallet, onClearInitialWallet }: WalletIntel
             <div className="px-3 py-2 border-b border-border/50">
               <div className="flex items-center justify-between">
                 <SectionHeader icon={WalletIcon} label="Watchlist" />
-                <button className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider bg-primary/20 text-primary hover:bg-primary/30 transition-colors">
+                <button
+                  onClick={() => setAddOpen(true)}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
+                >
                   <Plus className="w-3 h-3" />
                   Add
                 </button>
