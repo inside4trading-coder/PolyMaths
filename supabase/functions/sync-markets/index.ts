@@ -17,6 +17,36 @@ function ensureArray(value: unknown, defaultValue: string[] = []): string[] {
   return defaultValue;
 }
 
+/**
+ * Map Polymarket tag slugs/labels to our 7 top-level categories.
+ * Order matters: first match wins, so put broad categories last.
+ */
+const TAG_TO_TOPLEVEL: Array<[RegExp, string]> = [
+  [/^(politics|election|elections|presidential|senate|house|congress|midterms|trump|biden|government|policy)$/i, 'Politics'],
+  [/^(nfl|nba|nhl|mlb|mls|fifa|uefa|soccer|football|basketball|baseball|hockey|tennis|golf|f1|formula-1|sports?|college-football|world-cup|premier-league|la-liga|champions-league)$/i, 'Sports'],
+  [/^(crypto|bitcoin|ethereum|crypto-prices|tokens?|defi|nft|altcoins?|memecoins?)$/i, 'Crypto'],
+  [/^(economy|economic-policy|economics|fed|fed-rates|inflation|jobs|unemployment|tariffs|spending|gdp|recession|fomc|jerome-powell|interest-rates)$/i, 'Economics'],
+  [/^(geopolitics|world|middle-east|russia|ukraine|israel|iran|china|taiwan|war|ceasefire|diplomacy|nato|un)$/i, 'World'],
+  [/^(entertainment|movies?|music|tv|halftime|oscars?|grammys?|emmys?|celebrities?|gaming|gta)$/i, 'Entertainment'],
+];
+
+function deriveTopLevelCategory(tags: Array<{ label?: string; slug?: string }>, fallback?: string | null): string | null {
+  for (const t of tags || []) {
+    for (const [re, top] of TAG_TO_TOPLEVEL) {
+      if ((t.slug && re.test(t.slug)) || (t.label && re.test(t.label.replace(/\s+/g, '-')))) {
+        return top;
+      }
+    }
+  }
+  // Fallback: try to map the original category string itself
+  if (fallback) {
+    for (const [re, top] of TAG_TO_TOPLEVEL) {
+      if (re.test(fallback.replace(/\s+/g, '-'))) return top;
+    }
+  }
+  return fallback || null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -61,18 +91,31 @@ serve(async (req) => {
 
     // Fetch markets from Gamma API
     try {
-      let url = `${GAMMA_API_BASE}/markets?limit=${limit}&active=true`;
-      
-      // Note: Gamma API doesn't support updated_since, but we can filter locally
-      console.log(`[sync-markets] Fetching from: ${url}`);
-      const marketsResponse = await fetch(url);
-      
-      if (marketsResponse.ok) {
-        const markets = await marketsResponse.json();
-        const marketsArr = Array.isArray(markets) ? markets : [];
-        console.log(`[sync-markets] Fetched ${marketsArr.length} markets`);
-        
-        for (const m of marketsArr) {
+      // Fetch EVENTS (which carry the real category tags) and iterate their markets.
+      // /markets endpoint returns category=null almost always — only /events?include_tag=true
+      // gives us "Politics", "Crypto", "Sports"… in the tags array.
+      const eventsLimit = Math.max(50, Math.min(500, Number(limit) || 100));
+      const url = `${GAMMA_API_BASE}/events?limit=${eventsLimit}&closed=false&order=volume24hr&ascending=false&include_tag=true`;
+      console.log(`[sync-markets] Fetching events from: ${url}`);
+      const eventsResponse = await fetch(url);
+
+      if (eventsResponse.ok) {
+        const events = await eventsResponse.json();
+        const eventsArr = Array.isArray(events) ? events : [];
+        console.log(`[sync-markets] Fetched ${eventsArr.length} events`);
+
+        // Flatten event.markets[] but keep parent tags
+        const flatMarkets: Array<{ market: any; tags: Array<{ label?: string; slug?: string }>; eventCategory: string | null }> = [];
+        for (const ev of eventsArr) {
+          const tags = Array.isArray(ev?.tags) ? ev.tags : [];
+          const eventCategory = ev?.category || null;
+          for (const m of (ev?.markets || [])) {
+            flatMarkets.push({ market: m, tags, eventCategory });
+          }
+        }
+        console.log(`[sync-markets] Flattened to ${flatMarkets.length} markets with tags`);
+
+        for (const { market: m, tags, eventCategory } of flatMarkets) {
           // Skip if incremental and not recently updated
           if (incremental && lastSyncTime && m.updatedAt) {
             const marketUpdated = new Date(m.updatedAt);
@@ -116,7 +159,10 @@ serve(async (req) => {
           
           const liquidity = parseFloat(m.liquidity) || 0;
           const volume24h = parseFloat(m.volume24hr) || parseFloat(m.volume_24h) || 0;
-          const normalizedCategory = m.groupItemTitle || m.category || null;
+          // Derive a top-level category from the event tags. Fallback to event/market category.
+          const rawCategoryHint = m.category || eventCategory || m.groupItemTitle || null;
+          const normalizedCategory = deriveTopLevelCategory(tags, rawCategoryHint);
+          const tagLabels = tags.map(t => t.label).filter(Boolean) as string[];
 
           const derivedLiquidityScore = (() => {
             const liq = Math.max(0, liquidity);
@@ -134,7 +180,7 @@ serve(async (req) => {
             slug: m.slug || marketId,
             outcomes: outcomes,
             category: normalizedCategory,
-            tags: ensureArray(m.tags, []),
+            tags: tagLabels.length > 0 ? tagLabels : ensureArray(m.tags, []),
             end_date: m.end_date_iso || m.endDate || m.endDateIso || null,
             volume: parseFloat(m.volume) || 0,
             volume_24h: volume24h,
