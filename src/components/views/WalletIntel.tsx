@@ -19,6 +19,16 @@ import {
   type ActivityFilterType 
 } from '@/hooks/usePolymarket';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import { 
   Eye, EyeOff, Plus, Copy, ExternalLink, AlertTriangle,
   TrendingUp, Users, Activity, Zap, Loader2, Flame, Filter,
@@ -63,6 +73,10 @@ export function WalletIntel({ initialWallet, onClearInitialWallet }: WalletIntel
   const [activityFilter, setActivityFilter] = useState<ActivityFilterType>('all');
   const [activityLimit, setActivityLimit] = useState<number>(150);
   const [showLimitDropdown, setShowLimitDropdown] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newAddress, setNewAddress] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     if (initialWallet) {
@@ -73,6 +87,33 @@ export function WalletIntel({ initialWallet, onClearInitialWallet }: WalletIntel
 
   const { user } = useAuth();
   const { data: wallets = [], isLoading: walletsLoading } = useWallets(true, user?.id);
+  const handleAddWallet = async () => {
+    const address = newAddress.trim().toLowerCase();
+    if (!user) {
+      toast.error('You must be signed in to add a wallet');
+      return;
+    }
+    if (!/^0x[a-f0-9]{40}$/.test(address)) {
+      toast.error('Invalid Ethereum address');
+      return;
+    }
+    setAdding(true);
+    try {
+      await toggleWatch.mutateAsync({ address, isWatched: true, userId: user.id });
+      if (newLabel.trim()) {
+        await supabase.from('wallets').update({ label: newLabel.trim() }).eq('address', address).eq('user_id', user.id);
+      }
+      toast.success('Wallet added to watchlist');
+      syncSingleWallet.mutate({ walletAddress: address, limit: 500 });
+      setNewAddress('');
+      setNewLabel('');
+      setAddOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to add wallet');
+    } finally {
+      setAdding(false);
+    }
+  };
   const { data: activities = [], isLoading: activitiesLoading, refetch: refetchActivities } = useActivityFeed({
     walletAddress: selectedWallet || undefined,
     filter: activityFilter,
@@ -244,7 +285,10 @@ export function WalletIntel({ initialWallet, onClearInitialWallet }: WalletIntel
             <div className="px-3 py-2 border-b border-border/50">
               <div className="flex items-center justify-between">
                 <SectionHeader icon={WalletIcon} label="Watchlist" />
-                <button className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider bg-primary/20 text-primary hover:bg-primary/30 transition-colors">
+                <button
+                  onClick={() => setAddOpen(true)}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
+                >
                   <Plus className="w-3 h-3" />
                   Add
                 </button>
@@ -411,6 +455,55 @@ export function WalletIntel({ initialWallet, onClearInitialWallet }: WalletIntel
             onClose={() => setDetailWallet(null)} 
           />
         )}
+
+        {/* Add Wallet Dialog */}
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Wallet to Watchlist</DialogTitle>
+              <DialogDescription>
+                Enter a Polymarket wallet address (0x…) to start tracking its activity.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Address</label>
+                <Input
+                  value={newAddress}
+                  onChange={(e) => setNewAddress(e.target.value)}
+                  placeholder="0x..."
+                  className="font-mono text-xs"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">Label (optional)</label>
+                <Input
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  placeholder="Whale #1"
+                  className="text-xs"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <button
+                onClick={() => setAddOpen(false)}
+                className="px-3 py-1.5 rounded text-[11px] font-mono uppercase tracking-wider bg-muted text-muted-foreground hover:bg-muted/70 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddWallet}
+                disabled={adding || !newAddress.trim()}
+                className="flex items-center gap-1 px-3 py-1.5 rounded text-[11px] font-mono uppercase tracking-wider bg-primary/20 text-primary hover:bg-primary/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {adding && <Loader2 className="w-3 h-3 animate-spin" />}
+                Add Wallet
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );
