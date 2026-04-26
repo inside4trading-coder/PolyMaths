@@ -124,7 +124,7 @@ serve(async (req) => {
         const data = await res.json();
         const traders = Array.isArray(data) ? data : [];
         console.log(`[leaderboard] Returned ${traders.length} traders`);
-        result = traders;
+        result = { traders };
         break;
       }
 
