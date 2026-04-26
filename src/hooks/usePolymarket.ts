@@ -229,37 +229,79 @@ const CATEGORY_TYPE_MAP: Record<string, string> = {
   'cabinet': 'Politics',
   'party': 'Politics',
   'government': 'Politics',
+  'policy': 'Politics',
   // Sports
   'nfl': 'Sports',
   'nba': 'Sports',
   'nhl': 'Sports',
+  'mlb': 'Sports',
+  'mls': 'Sports',
   'fifa': 'Sports',
   'uefa': 'Sports',
   'premier league': 'Sports',
+  'premier-league': 'Sports',
   'la liga': 'Sports',
+  'la-liga': 'Sports',
   'bundesliga': 'Sports',
   'serie a': 'Sports',
   'ligue 1': 'Sports',
   'super bowl': 'Sports',
   'champion': 'Sports',
+  'champions-league': 'Sports',
   'mvp': 'Sports',
   'rookie': 'Sports',
   'coach': 'Sports',
   'college football': 'Sports',
+  'college-football': 'Sports',
   'afc': 'Sports',
   'nfc': 'Sports',
   'world cup': 'Sports',
+  'world-cup': 'Sports',
+  'sport': 'Sports',
+  'sports': 'Sports',
+  'soccer': 'Sports',
+  'football': 'Sports',
+  'basketball': 'Sports',
+  'baseball': 'Sports',
+  'hockey': 'Sports',
+  'tennis': 'Sports',
+  'golf': 'Sports',
+  'f1': 'Sports',
+  'formula-1': 'Sports',
   // Crypto
   'crypto': 'Crypto',
   'bitcoin': 'Crypto',
   'ethereum': 'Crypto',
   'token': 'Crypto',
+  'tokens': 'Crypto',
+  'crypto-prices': 'Crypto',
+  'defi': 'Crypto',
+  'nft': 'Crypto',
+  'altcoin': 'Crypto',
+  'altcoins': 'Crypto',
+  'memecoin': 'Crypto',
+  'memecoins': 'Crypto',
   'microstrategy': 'Crypto',
   'megaeth': 'Crypto',
   'infinex': 'Crypto',
   'fdv': 'Crypto',
   'market cap': 'Crypto',
   // Economics
+  'economy': 'Economics',
+  'economics': 'Economics',
+  'economic-policy': 'Economics',
+  'economic policy': 'Economics',
+  'fed': 'Economics',
+  'fed-rates': 'Economics',
+  'fed rates': 'Economics',
+  'fomc': 'Economics',
+  'jerome-powell': 'Economics',
+  'jerome powell': 'Economics',
+  'interest-rates': 'Economics',
+  'interest rates': 'Economics',
+  'recession': 'Economics',
+  'gdp': 'Economics',
+  'unemployment': 'Economics',
   'inflation': 'Economics',
   'tariffs': 'Economics',
   'revenue': 'Economics',
@@ -267,6 +309,15 @@ const CATEGORY_TYPE_MAP: Record<string, string> = {
   'doge': 'Economics',
   'jobs': 'Economics',
   // World
+  'world': 'World',
+  'geopolitics': 'World',
+  'middle-east': 'World',
+  'middle east': 'World',
+  'china': 'World',
+  'taiwan': 'World',
+  'nato': 'World',
+  'diplomacy': 'World',
+  'diplomacy-ceasefire': 'World',
   'russia': 'World',
   'ukraine': 'World',
   'israel': 'World',
@@ -275,18 +326,52 @@ const CATEGORY_TYPE_MAP: Record<string, string> = {
   'ceasefire': 'World',
   'war': 'World',
   // Entertainment
+  'entertainment': 'Entertainment',
+  'movies': 'Entertainment',
+  'movie': 'Entertainment',
+  'music': 'Entertainment',
+  'tv': 'Entertainment',
+  'oscar': 'Entertainment',
+  'oscars': 'Entertainment',
+  'grammys': 'Entertainment',
+  'emmys': 'Entertainment',
+  'celebrities': 'Entertainment',
+  'celebrity': 'Entertainment',
+  'gaming': 'Entertainment',
   'halftime': 'Entertainment',
   'perform': 'Entertainment',
   'gta': 'Entertainment',
   'weinstein': 'Entertainment',
 };
 
-export function categorizeCategoryType(category: string | null | undefined): string {
-  if (!category) return 'Other';
-  const lower = category.toLowerCase();
-  for (const [keyword, type] of Object.entries(CATEGORY_TYPE_MAP)) {
-    if (lower.includes(keyword)) {
-      return type;
+/**
+ * Map a raw Polymarket `category` (and optionally an array of event tags)
+ * to one of our 7 top-level categories. Falls back to 'Other' only when
+ * neither category nor any tag matches.
+ */
+export function categorizeCategoryType(
+  category: string | null | undefined,
+  tags?: string[] | null,
+): string {
+  const tryMatch = (raw: string | null | undefined): string | null => {
+    if (!raw) return null;
+    const lower = String(raw).toLowerCase().trim();
+    // Exact match first (handles slugs like "fed-rates")
+    if (CATEGORY_TYPE_MAP[lower]) return CATEGORY_TYPE_MAP[lower];
+    // Substring match
+    for (const [keyword, type] of Object.entries(CATEGORY_TYPE_MAP)) {
+      if (lower.includes(keyword)) return type;
+    }
+    return null;
+  };
+
+  const fromCat = tryMatch(category);
+  if (fromCat) return fromCat;
+
+  if (tags && tags.length > 0) {
+    for (const t of tags) {
+      const m = tryMatch(t);
+      if (m) return m;
     }
   }
   return 'Other';
