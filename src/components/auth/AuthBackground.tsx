@@ -21,8 +21,8 @@ const AuthBackground = () => {
         preload="auto"
         className="absolute inset-0 h-full w-full object-cover scale-105"
         style={{
-          filter: 'blur(6px) saturate(110%) brightness(0.9)',
-          opacity: 0.85,
+          filter: 'blur(4px) saturate(115%) brightness(1)',
+          opacity: 1,
           WebkitMaskImage:
             'radial-gradient(ellipse at center, rgba(0,0,0,1) 55%, rgba(0,0,0,0.7) 80%, rgba(0,0,0,0) 100%)',
           maskImage:
@@ -30,7 +30,7 @@ const AuthBackground = () => {
         }}
       />
       {/* Subtle theme tint — keeps video readable and brand-aligned */}
-      <div className="absolute inset-0 bg-background/25" />
+      <div className="absolute inset-0 bg-background/10" />
       {/* Edge vignette to fully fuse corners into the page bg */}
       <div
         className="absolute inset-0"
