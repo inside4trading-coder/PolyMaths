@@ -366,7 +366,7 @@ const Auth = () => {
           animate="visible"
           className="w-full max-w-md"
         >
-          <Card className="border-border/30 bg-card/30 backdrop-blur-xl shadow-2xl">
+          <Card className="border-border/15 bg-card/10 backdrop-blur-md shadow-2xl">
             <CardHeader className="text-center space-y-4">
               <motion.div variants={logoVariants} className="flex justify-center"><img src={logo} alt="Logo" className="h-20 w-auto" /></motion.div>
               <motion.div variants={childVariants}><CardTitle className="text-2xl font-bold">Reset Password</CardTitle></motion.div>
@@ -416,7 +416,7 @@ const Auth = () => {
           animate="visible"
           className="w-full max-w-md"
         >
-          <Card className="border-border/30 bg-card/30 backdrop-blur-xl shadow-2xl">
+          <Card className="border-border/15 bg-card/10 backdrop-blur-md shadow-2xl">
             <CardHeader className="text-center space-y-4">
               <motion.div variants={logoVariants} className="flex justify-center"><img src={logo} alt="Logo" className="h-20 w-auto" /></motion.div>
               <motion.div variants={childVariants}><CardTitle className="text-2xl font-bold">Set New Password</CardTitle></motion.div>
@@ -472,7 +472,7 @@ const Auth = () => {
         animate="visible"
         className="w-full max-w-md"
       >
-        <Card className="border-border/30 bg-card/30 backdrop-blur-xl shadow-2xl">
+        <Card className="border-border/15 bg-card/10 backdrop-blur-md shadow-2xl">
           <CardHeader className="text-center space-y-4">
             <motion.div variants={logoVariants} className="flex justify-center"><img src={logo} alt="Logo" className="h-20 w-auto" /></motion.div>
             <motion.div variants={childVariants}><CardTitle className="text-2xl font-bold">PolyMath Terminal</CardTitle></motion.div>
