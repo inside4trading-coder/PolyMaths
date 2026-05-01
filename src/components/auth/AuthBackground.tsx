@@ -11,7 +11,7 @@ const AuthBackground = () => {
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-background"
     >
-      {/* Video layer — softly blurred, dimmed, slightly scaled to hide edges */}
+      {/* Video layer — visible but softly blended */}
       <video
         src={authBgVideo}
         autoPlay
@@ -19,22 +19,24 @@ const AuthBackground = () => {
         loop
         playsInline
         preload="auto"
-        className="absolute inset-0 h-full w-full object-cover scale-110 opacity-40 blur-2xl saturate-75"
+        className="absolute inset-0 h-full w-full object-cover scale-105"
         style={{
+          filter: 'blur(6px) saturate(110%) brightness(0.9)',
+          opacity: 0.85,
           WebkitMaskImage:
-            'radial-gradient(ellipse at center, rgba(0,0,0,1) 35%, rgba(0,0,0,0.55) 65%, rgba(0,0,0,0) 100%)',
+            'radial-gradient(ellipse at center, rgba(0,0,0,1) 55%, rgba(0,0,0,0.7) 80%, rgba(0,0,0,0) 100%)',
           maskImage:
-            'radial-gradient(ellipse at center, rgba(0,0,0,1) 35%, rgba(0,0,0,0.55) 65%, rgba(0,0,0,0) 100%)',
+            'radial-gradient(ellipse at center, rgba(0,0,0,1) 55%, rgba(0,0,0,0.7) 80%, rgba(0,0,0,0) 100%)',
         }}
       />
-      {/* Color tint to fuse with theme */}
-      <div className="absolute inset-0 bg-background/60" />
-      {/* Vignette to fade the corners completely into the bg */}
+      {/* Subtle theme tint — keeps video readable and brand-aligned */}
+      <div className="absolute inset-0 bg-background/25" />
+      {/* Edge vignette to fully fuse corners into the page bg */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse at center, transparent 40%, hsl(var(--background)) 95%)',
+            'radial-gradient(ellipse at center, transparent 50%, hsl(var(--background) / 0.85) 88%, hsl(var(--background)) 100%)',
         }}
       />
     </div>
