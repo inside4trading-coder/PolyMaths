@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import logo from '@/assets/logo.png';
 import PasswordStrengthIndicator, { isPasswordValid } from '@/components/auth/PasswordStrengthIndicator';
+import AuthBackground from '@/components/auth/AuthBackground';
 import { checkRateLimit, recordAttempt, resetAttempts } from '@/lib/rateLimiter';
 import { lovable } from '@/integrations/lovable';
 
@@ -356,7 +357,8 @@ const Auth = () => {
   // ---- Forgot Password View ----
   if (view === 'forgot') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="relative min-h-screen flex items-center justify-center p-4">
+        <AuthBackground />
         <motion.div
           key="forgot"
           variants={cardVariants}
@@ -405,7 +407,8 @@ const Auth = () => {
   // ---- Reset Password View ----
   if (view === 'reset') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="relative min-h-screen flex items-center justify-center p-4">
+        <AuthBackground />
         <motion.div
           key="reset"
           variants={cardVariants}
@@ -460,7 +463,8 @@ const Auth = () => {
 
   // ---- Main Login / Signup View ----
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="relative min-h-screen flex items-center justify-center p-4">
+      <AuthBackground />
       <motion.div
         key="main"
         variants={cardVariants}
