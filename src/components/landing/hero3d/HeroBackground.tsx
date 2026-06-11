@@ -26,20 +26,32 @@ function supportsWebGL(): boolean {
   }
 }
 
+function isLowEndDevice(): boolean {
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  if (nav.hardwareConcurrency && nav.hardwareConcurrency <= 3) return true;
+  if (nav.deviceMemory && nav.deviceMemory <= 2) return true;
+  return false;
+}
+
 function shouldRender3D(): boolean {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
-  // Low-end mobile: coarse pointer + narrow viewport gets the static fallback
-  if (window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 768) return false;
+  if (isLowEndDevice()) return false;
   return supportsWebGL();
+}
+
+function isMobileViewport(): boolean {
+  return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
 }
 
 export function HeroBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [enabled, setEnabled] = useState(false);
+  const [quality, setQuality] = useState<'low' | 'high'>('high');
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     setEnabled(shouldRender3D());
+    setQuality(isMobileViewport() ? 'low' : 'high');
   }, []);
 
   // Pause the render loop when the hero scrolls out of view
@@ -59,7 +71,7 @@ export function HeroBackground() {
       <StaticFallback />
       {enabled && (
         <Suspense fallback={null}>
-          <OrderFlowScene active={visible} />
+          <OrderFlowScene active={visible} quality={quality} />
         </Suspense>
       )}
     </div>

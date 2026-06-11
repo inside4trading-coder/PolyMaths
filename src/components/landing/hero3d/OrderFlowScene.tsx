@@ -8,7 +8,6 @@ import * as THREE from 'three';
  * Amber = order flow, green = signal particles. Cursor disperses nearby flow.
  */
 
-const PARTICLE_COUNT = 4500;
 const BOUNDS = { x: 24, y: 12, z: 7 } as const;
 const CURSOR_RADIUS = 3.2;
 const CURSOR_FORCE = 2.4;
@@ -43,7 +42,13 @@ function flowZ(x: number, y: number, _z: number, t: number): number {
   return 0.3 * Math.cos(x * 0.17 + t * 0.27) * Math.sin(y * 0.23 - t * 0.19);
 }
 
-function ParticleField() {
+interface ParticleFieldProps {
+  count: number;
+  /** Touch devices have no hover cursor — skip the dispersion force */
+  interactive: boolean;
+}
+
+function ParticleField({ count, interactive }: ParticleFieldProps) {
   const pointsRef = useRef<THREE.Points>(null);
   const groupRef = useRef<THREE.Group>(null);
   const { pointer, camera } = useThree();
@@ -51,15 +56,15 @@ function ParticleField() {
   const dotTexture = useMemo(createDotTexture, []);
 
   const { positions, colors, speeds } = useMemo(() => {
-    const positions = new Float32Array(PARTICLE_COUNT * 3);
-    const colors = new Float32Array(PARTICLE_COUNT * 3);
-    const speeds = new Float32Array(PARTICLE_COUNT);
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const speeds = new Float32Array(count);
 
     const amber = new THREE.Color().setHSL(38 / 360, 0.92, 0.5);
     const amberDim = new THREE.Color().setHSL(38 / 360, 0.7, 0.32);
     const signal = new THREE.Color().setHSL(142 / 360, 0.71, 0.45);
 
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    for (let i = 0; i < count; i++) {
       positions[i * 3] = (Math.random() * 2 - 1) * BOUNDS.x;
       positions[i * 3 + 1] = (Math.random() * 2 - 1) * BOUNDS.y;
       positions[i * 3 + 2] = (Math.random() * 2 - 1) * BOUNDS.z;
@@ -73,7 +78,7 @@ function ParticleField() {
       speeds[i] = 0.5 + Math.random();
     }
     return { positions, colors, speeds };
-  }, []);
+  }, [count]);
 
   const cursorWorld = useMemo(() => new THREE.Vector3(), []);
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
@@ -91,7 +96,7 @@ function ParticleField() {
     raycaster.setFromCamera(pointer, camera);
     raycaster.ray.intersectPlane(flowPlane, cursorWorld);
 
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
+    for (let i = 0; i < count; i++) {
       const ix = i * 3;
       let x = pos[ix];
       let y = pos[ix + 1];
@@ -105,7 +110,7 @@ function ParticleField() {
       const dx = x - cursorWorld.x;
       const dy = y - cursorWorld.y;
       const distSq = dx * dx + dy * dy;
-      if (distSq < CURSOR_RADIUS * CURSOR_RADIUS && distSq > 0.0001) {
+      if (interactive && distSq < CURSOR_RADIUS * CURSOR_RADIUS && distSq > 0.0001) {
         const dist = Math.sqrt(distSq);
         const push = ((CURSOR_RADIUS - dist) / CURSOR_RADIUS) * CURSOR_FORCE * dt;
         x += (dx / dist) * push;
@@ -159,19 +164,22 @@ function ParticleField() {
 interface OrderFlowSceneProps {
   /** Pause rendering when the hero is off-screen */
   active: boolean;
+  /** 'low' halves the particle budget and caps DPR — for mobile GPUs */
+  quality: 'low' | 'high';
 }
 
-export default function OrderFlowScene({ active }: OrderFlowSceneProps) {
+export default function OrderFlowScene({ active, quality }: OrderFlowSceneProps) {
+  const isLow = quality === 'low';
   return (
     <Canvas
       frameloop={active ? 'always' : 'never'}
-      dpr={[1, 2]}
+      dpr={isLow ? [1, 1.5] : [1, 2]}
       camera={{ position: [0, 0, 15], fov: 55 }}
       gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
       eventSource={typeof document !== 'undefined' ? document.body : undefined}
     >
-      <ParticleField />
+      <ParticleField count={isLow ? 1800 : 4500} interactive={!isLow} />
     </Canvas>
   );
 }
