@@ -17,16 +17,22 @@ export function FooterSection() {
         </div>
 
         <nav className="flex items-center gap-6 text-sm text-muted-foreground">
-          <a href="#features" className="hover:text-foreground transition-colors">
+          <a href="#features" className="hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:text-foreground">
             {language === 'es' ? 'Características' : 'Features'}
           </a>
-          <Link to="/auth" className="hover:text-foreground transition-colors">Login</Link>
+          <Link to="/auth" className="hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:text-foreground">Login</Link>
         </nav>
 
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} PolyMath. On-Chain Intelligence.
         </p>
       </div>
+
+      <p className="max-w-7xl mx-auto mt-8 pt-6 border-t border-border text-[11px] leading-relaxed text-muted-foreground/80 text-center">
+        {language === 'es'
+          ? 'PolyMath es una herramienta de analítica. No es asesoramiento financiero. Operar en mercados de predicción implica riesgo; el rendimiento pasado no garantiza resultados futuros.'
+          : 'PolyMath is an analytics tool. Not financial advice. Trading prediction markets involves risk; past performance does not guarantee future results.'}
+      </p>
     </footer>
   );
 }

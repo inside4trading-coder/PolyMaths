@@ -49,7 +49,7 @@ export function LandingNav() {
               <Link
                 key={link.href}
                 to={link.href}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:text-foreground"
               >
                 {link.label}
               </Link>
@@ -57,7 +57,7 @@ export function LandingNav() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:text-foreground"
               >
                 {link.label}
               </a>
@@ -79,7 +79,7 @@ export function LandingNav() {
           </Button>
           <Button asChild size="sm" className="gap-1.5">
             <Link to="/auth">
-              {language === 'es' ? 'Comenzar' : 'Get Started'}
+              {language === 'es' ? 'Obtener acceso' : 'Get access'}
               <span>→</span>
             </Link>
           </Button>
@@ -102,7 +102,7 @@ export function LandingNav() {
                 key={link.href}
                 to={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="block text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                className="block text-sm text-muted-foreground hover:text-foreground transition-colors py-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:text-foreground"
               >
                 {link.label}
               </Link>
@@ -111,7 +111,7 @@ export function LandingNav() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className="block text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                className="block text-sm text-muted-foreground hover:text-foreground transition-colors py-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:text-foreground"
               >
                 {link.label}
               </a>
@@ -126,7 +126,7 @@ export function LandingNav() {
           </button>
           <Button asChild size="sm" className="w-full gap-1.5">
             <Link to="/auth">
-              {language === 'es' ? 'Comenzar Ahora' : 'Get Started'}
+              {language === 'es' ? 'Obtener acceso' : 'Get access'}
               <span>→</span>
             </Link>
           </Button>

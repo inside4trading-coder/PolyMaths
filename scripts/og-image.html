@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- Source for public/og-image.png (1200x630). Regenerate with:
+     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+       --screenshot=public/og-image.png --window-size=1200,630 --hide-scrollbars \
+       "file://$PWD/scripts/og-image.html" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    font-family: 'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    background:
+      radial-gradient(ellipse 75% 60% at 28% 30%, hsl(38 92% 50% / 0.10), transparent 60%),
+      radial-gradient(ellipse 55% 45% at 80% 75%, hsl(38 70% 40% / 0.07), transparent 65%),
+      hsl(228 20% 5%);
+    color: hsl(220 10% 90%);
+    position: relative;
+  }
+  .grid {
+    position: absolute; inset: 0; opacity: 0.10;
+    background-image:
+      linear-gradient(hsl(38 92% 50%) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(38 92% 50%) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .dots { position: absolute; inset: 0; }
+  .dot { position: absolute; border-radius: 50%; background: hsl(38 92% 55%); }
+  .content { position: relative; z-index: 2; padding: 72px 80px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 8px 18px; border-radius: 999px; width: fit-content;
+    border: 1px solid hsl(38 92% 50% / 0.35); background: hsl(38 92% 50% / 0.10);
+    font-family: 'SF Mono', Menlo, monospace; font-size: 17px; letter-spacing: 2px;
+    color: hsl(38 92% 55%); text-transform: uppercase;
+  }
+  h1 { font-size: 84px; font-weight: 800; line-height: 1.06; letter-spacing: -2px; margin-top: 36px; }
+  h1 .amber { color: hsl(38 92% 52%); }
+  .sub { margin-top: 26px; font-size: 28px; line-height: 1.45; color: hsl(228 8% 62%); max-width: 880px; }
+  .footer { display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 14px; font-size: 30px; font-weight: 700; }
+  .brand .mark {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: linear-gradient(135deg, hsl(38 92% 52%), hsl(25 95% 48%));
+    display: flex; align-items: center; justify-content: center;
+    color: hsl(228 20% 5%); font-family: 'SF Mono', Menlo, monospace; font-size: 24px; font-weight: 800;
+  }
+  .live { display: flex; align-items: center; gap: 10px; font-family: 'SF Mono', Menlo, monospace; font-size: 18px; letter-spacing: 3px; color: hsl(142 71% 45%); }
+  .live .pulse { width: 10px; height: 10px; border-radius: 50%; background: hsl(142 71% 45%); box-shadow: 0 0 14px hsl(142 71% 45% / 0.8); }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="dots" id="dots"></div>
+  <div class="content">
+    <div>
+      <div class="badge">▸ On-Chain Intelligence Terminal</div>
+      <h1>See smart money move on<br /><span class="amber">Polymarket</span> before the crowd<span class="amber">▌</span></h1>
+      <div class="sub">Whale tracking · AI sentiment · Real-time trading signals</div>
+    </div>
+    <div class="footer">
+      <div class="brand"><div class="mark">P</div>PolyMath</div>
+      <div class="live"><div class="pulse"></div>LIVE</div>
+    </div>
+  </div>
+  <script>
+    // Deterministic pseudo-random particle scatter (mirrors the hero's order-flow field)
+    let seed = 42;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const dots = document.getElementById('dots');
+    for (let i = 0; i < 140; i++) {
+      const d = document.createElement('div');
+      d.className = 'dot';
+      const size = 1.5 + rand() * 3;
+      d.style.width = size + 'px';
+      d.style.height = size + 'px';
+      d.style.left = rand() * 1200 + 'px';
+      d.style.top = rand() * 630 + 'px';
+      d.style.opacity = (0.15 + rand() * 0.5).toFixed(2);
+      if (rand() < 0.12) d.style.background = 'hsl(142 71% 45%)';
+      dots.appendChild(d);
+    }
+  </script>
+</body>
+</html>
