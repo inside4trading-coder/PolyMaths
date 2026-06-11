@@ -5,8 +5,8 @@ import { Search, Brain, Wallet, Radar } from 'lucide-react';
 const featuresData = {
   en: {
     sectionTag: 'Features',
-    sectionTitle: 'Everything you need to win',
-    sectionDesc: 'Institutional-grade tools designed for Polymarket traders.',
+    sectionTitle: 'Your edge, quantified',
+    sectionDesc: 'Institutional-grade tooling for Polymarket traders. Every metric updated in real time.',
     items: [
       { icon: Search, title: 'Whale Tracker', description: 'Monitor high-volume wallets in real time. Detect unusual moves and accumulation patterns before the market reacts.', tag: 'Core' },
       { icon: Brain, title: 'AI PolyAgents', description: 'AI agents that analyze markets, generate predictions with reasoning and detect trading signals based on news.', tag: 'Beta' },
@@ -16,8 +16,8 @@ const featuresData = {
   },
   es: {
     sectionTag: 'Features',
-    sectionTitle: 'Todo lo que necesitas para ganar',
-    sectionDesc: 'Herramientas de grado institucional diseñadas para traders de Polymarket.',
+    sectionTitle: 'Tu edge, cuantificado',
+    sectionDesc: 'Herramientas de grado institucional para traders de Polymarket. Cada métrica actualizada en tiempo real.',
     items: [
       { icon: Search, title: 'Whale Tracker', description: 'Monitorea wallets de alto volumen en tiempo real. Detecta movimientos inusuales y patrones de acumulación antes que el mercado reaccione.', tag: 'Core' },
       { icon: Brain, title: 'AI PolyAgents', description: 'Agentes de IA que analizan mercados, generan predicciones con razonamiento y detectan señales de trading basadas en noticias.', tag: 'Beta' },

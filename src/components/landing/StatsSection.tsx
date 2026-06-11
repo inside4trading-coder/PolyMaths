@@ -19,7 +19,7 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
       ref={ref}
       onViewportEnter={() => setHasAnimated(true)}
       viewport={{ once: true }}
-      className="text-4xl md:text-5xl font-bold font-mono text-foreground"
+      className="text-4xl md:text-5xl font-bold font-mono tabular-nums text-foreground"
     >
       <motion.span>{rounded}</motion.span>
       {suffix}

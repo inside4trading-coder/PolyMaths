@@ -11,7 +11,7 @@ const tiers = {
     tag: 'Pricing',
     title: 'Choose your edge',
     subtitle: 'Start free, upgrade when you need real-time power.',
-    cta: 'Get Started',
+    cta: 'Start tracking',
     ctaPro: 'Go Pro',
     popular: 'Most Popular',
     plans: [
@@ -59,7 +59,7 @@ const tiers = {
     tag: 'Precios',
     title: 'Elige tu ventaja',
     subtitle: 'Empieza gratis, escala cuando necesites datos en tiempo real.',
-    cta: 'Comenzar',
+    cta: 'Empieza a rastrear',
     ctaPro: 'Ir a Pro',
     popular: 'Más Popular',
     plans: [
