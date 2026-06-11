@@ -61,6 +61,7 @@ export function HeroSection() {
             <span className="text-primary">Polymarket</span>
             <br />
             {t.h1b}
+            <span aria-hidden className="cursor-blink text-primary font-mono font-normal select-none">▌</span>
           </motion.h1>
 
           <motion.p variants={fadeUp} className="text-lg text-muted-foreground max-w-md leading-relaxed">
@@ -68,13 +69,13 @@ export function HeroSection() {
           </motion.p>
 
           <motion.div variants={fadeUp} className="flex flex-wrap gap-4 pt-2">
-            <Button asChild size="lg" className="gap-2 text-base">
+            <Button asChild size="lg" className="group gap-2 text-base transition-shadow hover:glow-primary">
               <Link to="/auth">
                 {t.cta}
-                <span>→</span>
+                <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="gap-2 text-base">
+            <Button asChild variant="outline" size="lg" className="gap-2 text-base hover:border-primary/40">
               <a href="#features">{t.features}</a>
             </Button>
           </motion.div>
@@ -99,10 +100,14 @@ export function HeroSection() {
         >
           <img
             src={dashboardPreview}
-            alt="PolyMath Terminal"
+            alt="PolyMath terminal dashboard showing the Positions Radar with live market data"
             className="w-full h-auto rounded-xl"
             loading="eager"
           />
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border">
+            <span className="live-pulse w-1.5 h-1.5 rounded-full bg-[hsl(var(--success))]" />
+            <span className="text-[10px] font-mono font-semibold tracking-widest text-[hsl(var(--success))]">LIVE</span>
+          </div>
         </motion.div>
       </div>
     </section>

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, Globe } from 'lucide-react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import logoImage from '@/assets/logo.png';
 
@@ -13,7 +13,6 @@ const navLinksConfig = [
 ];
 
 export function LandingNav() {
-  const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { language, setLanguage } = useLanguage();
 
@@ -23,22 +22,20 @@ export function LandingNav() {
     isRoute: 'isRoute' in l && l.isRoute,
   }));
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  // Progressive blur/background tied to scroll position instead of a binary toggle.
+  // Alpha is computed manually so the theme CSS variables keep working in light mode.
+  const { scrollY } = useScroll();
+  const progress = (y: number) => Math.min(y / 120, 1);
+  const backgroundColor = useTransform(scrollY, (y) => `hsl(var(--background) / ${(progress(y) * 0.85).toFixed(3)})`);
+  const backdropFilter = useTransform(scrollY, (y) => `blur(${(progress(y) * 16).toFixed(1)}px)`);
+  const borderColor = useTransform(scrollY, (y) => `hsl(var(--border) / ${progress(y).toFixed(3)})`);
 
   const toggleLang = () => setLanguage(language === 'es' ? 'en' : 'es');
 
   return (
-    <nav
-      className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-        scrolled
-          ? 'bg-background/80 backdrop-blur-xl border-b border-border shadow-lg shadow-background/20'
-          : 'bg-transparent'
-      )}
+    <motion.nav
+      style={{ backgroundColor, backdropFilter, WebkitBackdropFilter: backdropFilter, borderBottomColor: borderColor }}
+      className="fixed top-0 left-0 right-0 z-50 border-b border-transparent"
     >
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-16">
         <Link to="/" className="flex items-center gap-2.5">
@@ -135,6 +132,6 @@ export function LandingNav() {
           </Button>
         </div>
       )}
-    </nav>
+    </motion.nav>
   );
 }
