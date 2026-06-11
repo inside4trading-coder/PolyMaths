@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Activity, Cpu } from 'lucide-react';
+import { HeroBackground } from '@/components/landing/hero3d/HeroBackground';
 import dashboardPreview from '@/assets/dashboard-preview.png';
 
 const container = {
@@ -44,7 +45,8 @@ export function HeroSection() {
 
   return (
     <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-      <div className="absolute inset-0 terminal-grid opacity-20" />
+      <HeroBackground />
+      <div className="absolute inset-0 terminal-grid opacity-10" />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
 
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center">
