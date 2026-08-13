@@ -1,165 +1,158 @@
+*[Versión en español](README.es.md)*
+
 # PolyMath 🧠📈
 
-**PolyMath** es un terminal de trading algorítmico para mercados de
-predicción de **Polymarket**: combina analítica de order flow en tiempo real,
-tracking de wallets influyentes ("smart money") y un bot de ejecución
-automática de órdenes basado en señales, todo con datos on-chain reales.
+**PolyMath** is an algorithmic trading terminal for **Polymarket** prediction markets. It combines real-time order-flow analytics, influential-wallet tracking ("smart money"), and an automatic order-execution bot driven by signals, all using real on-chain data.
 
-**Producción:** https://poly-maths.vercel.app
+**Production:** https://poly-maths.vercel.app
 
-Construido por **[Inside4Trading](https://twitter.com/Inside4Trading)**.
+Built by **[Inside4Trading](https://twitter.com/Inside4Trading)**.
 
-> ⚠️ Herramienta de análisis y ejecución de trading — no es asesoría
-> financiera. El uso del bot de ejecución automática implica riesgo real de
-> capital.
+> ⚠️ Trading analysis and execution tool — not financial advice. Using the automatic execution bot involves real capital risk.
 
 ---
 
-## Qué hace
+## What it does
 
-### Terminal de mercado
-- **Market Radar** — panel de descubrimiento de mercados activos en Polymarket
-- **Market Detail** — vista profunda de un mercado individual
-- **Dual Orderbook** — order book en tiempo real (bid/ask) vía WebSocket, con
-  gráfico de profundidad (`DepthChart`)
-- **Hero 3D de order-flow** — 4.500 partículas siguiendo corrientes
-  pseudo-curl en la paleta de marca (Three.js), pausado fuera de viewport
+### Market terminal
+
+- **Market Radar** — active-market discovery panel for Polymarket.
+- **Market Detail** — deep view of an individual market.
+- **Dual Orderbook** — real-time bid/ask order book over WebSocket, with a depth chart (`DepthChart`).
+- **3D order-flow hero** — 4,500 particles following pseudo-curl flows in the brand palette using Three.js; paused outside the viewport.
 
 ### Wallet Intelligence
-- **Tracking on-chain** de actividad de wallets (`useWalletOnChainActivity`)
-- **Win rates y sparklines** históricos por wallet (`useWalletWinRates`,
-  `useWalletSparklines`)
-- Identificación de "smart money" — wallets con historial de aciertos
+
+- **On-chain wallet activity tracking** (`useWalletOnChainActivity`).
+- Historical **win rates and sparklines** per wallet (`useWalletWinRates`, `useWalletSparklines`).
+- Smart-money identification based on wallets with a record of successful calls.
 
 ### Trading Bot
-- **Bot Builder** — configuración de estrategias y reglas de entrada/salida
-- **Bot Monitor** — feed en vivo, curva de equity, resumen de sesión, panel
-  de posiciones abiertas y strip de estado
-- **Ejecución real de órdenes** vía edge functions dedicadas — el bot no es
-  solo una simulación
-- **Agentes de IA** (`AgentsView`) — configuración y limpieza automática de
-  datos de agentes
 
-### Señales
-- **RAG sobre noticias** para generar señales de trading a partir de eventos
-- **Sentiment tracker** — análisis de sentimiento de mercado
+- **Bot Builder** — configure strategies and entry/exit rules.
+- **Bot Monitor** — live feed, equity curve, session summary, open-positions panel, and status strip.
+- **Real order execution** through dedicated edge functions — the bot is not only a simulation.
+- **AI Agents** (`AgentsView`) — configuration and automated agent-data cleanup.
+
+### Signals
+
+- **News RAG** to generate trading signals from events.
+- **Sentiment tracker** for market-sentiment analysis.
 
 ---
 
-## Arquitectura
+## Architecture
 
-### Edge Functions (Supabase)
+### Supabase Edge Functions
 
-| Función | Propósito |
+| Function | Purpose |
 |---|---|
-| `polymarket-clob` | Cliente del Central Limit Order Book de Polymarket |
-| `polymarket-data` | Datos generales de mercados |
-| `polymarket-subgraph` | Consultas on-chain vía subgraph |
-| `polymarket-agents` | Backend de los agentes de IA |
-| `sync-markets` / `sync-market-detail` / `sync-tokens` | Sincronización periódica de mercados y tokens |
-| `backfill-markets` | Carga histórica de mercados |
-| `bot-signal-scanner` | Escanea condiciones de entrada según la estrategia configurada |
-| `bot-order-executor` | **Ejecuta órdenes reales** en Polymarket cuando se dispara una señal |
-| `bot-position-updater` | Actualiza el estado de posiciones abiertas |
-| `bot-backfill-session` | Reconstruye el histórico de una sesión del bot |
-| `rag-news-signals` | Genera señales a partir de noticias vía RAG |
-| `sentiment-tracker` | Sentimiento agregado de mercado |
-| `health-check` / `maintenance-cron` | Salud del sistema y tareas de mantenimiento programadas |
+| `polymarket-clob` | Polymarket Central Limit Order Book client |
+| `polymarket-data` | General market data |
+| `polymarket-subgraph` | On-chain queries through the subgraph |
+| `polymarket-agents` | AI-agent backend |
+| `sync-markets` / `sync-market-detail` / `sync-tokens` | Periodic market and token synchronization |
+| `backfill-markets` | Historical market loading |
+| `bot-signal-scanner` | Scans entry conditions according to the configured strategy |
+| `bot-order-executor` | **Executes real orders** on Polymarket when a signal fires |
+| `bot-position-updater` | Updates open-position status |
+| `bot-backfill-session` | Rebuilds a bot-session history |
+| `rag-news-signals` | Generates news-based signals through RAG |
+| `sentiment-tracker` | Aggregated market sentiment |
+| `health-check` / `maintenance-cron` | System health and scheduled maintenance |
 
-### Hooks de datos
+### Data hooks
 
-| Hook | Para qué |
+| Hook | Purpose |
 |---|---|
-| `usePolymarket.ts` | Hook central de datos de Polymarket (74 KB — el archivo más grande del repo) |
-| `useOrderbook.ts` / `useOrderbookWebSocket.ts` | Order book en tiempo real |
-| `useWalletOnChainActivity.ts` | Actividad on-chain de una wallet (10.5 KB) |
-| `useWalletWinRates.ts` / `useWalletSparklines.ts` | Métricas históricas de wallets |
-| `useAgentConfig.ts` / `useAgentDataCleanup.ts` | Configuración y limpieza de agentes de IA |
-| `useAutoSync.ts` | Sincronización automática de datos |
-| `useMarketNameResolver.ts` | Resuelve IDs de mercado a nombres legibles |
-| `useWatchlistAutoRefresh.ts` | Refresco automático de la watchlist |
-| `useRealtimeData.ts` | Suscripciones realtime de Supabase |
+| `usePolymarket.ts` | Central Polymarket data hook (74 KB — the repository's largest file) |
+| `useOrderbook.ts` / `useOrderbookWebSocket.ts` | Real-time order book |
+| `useWalletOnChainActivity.ts` | On-chain activity for a wallet (10.5 KB) |
+| `useWalletWinRates.ts` / `useWalletSparklines.ts` | Historical wallet metrics |
+| `useAgentConfig.ts` / `useAgentDataCleanup.ts` | AI-agent configuration and cleanup |
+| `useAutoSync.ts` | Automatic data synchronization |
+| `useMarketNameResolver.ts` | Resolves market IDs to readable names |
+| `useWatchlistAutoRefresh.ts` | Automatic watchlist refresh |
+| `useRealtimeData.ts` | Supabase realtime subscriptions |
 
-### Estructura de carpetas
+### Folder structure
 
-```
+```text
 src/
 ├── pages/
-│   ├── Landing.tsx      # Landing pública con hero 3D
-│   ├── Index.tsx         # Terminal principal (autenticado)
-│   ├── Auth.tsx           # Login/registro
-│   └── Pricing.tsx        # Planes
+│   ├── Landing.tsx      # Public landing page with 3D hero
+│   ├── Index.tsx        # Main authenticated terminal
+│   ├── Auth.tsx         # Login/registration
+│   └── Pricing.tsx      # Plans
 ├── components/
 │   ├── views/
-│   │   ├── MarketRadar.tsx    # Descubrimiento de mercados
-│   │   ├── MarketDetail.tsx   # Detalle de mercado
+│   │   ├── MarketRadar.tsx    # Market discovery
+│   │   ├── MarketDetail.tsx   # Market detail
 │   │   ├── WalletIntel.tsx    # Wallet Intelligence (29 KB)
-│   │   ├── BotBuilder.tsx     # Configuración de estrategias (34 KB — la vista más grande)
-│   │   ├── BotMonitor.tsx     # Monitoreo del bot en vivo
-│   │   ├── AgentsView.tsx     # Agentes de IA
+│   │   ├── BotBuilder.tsx     # Strategy configuration (34 KB — largest view)
+│   │   ├── BotMonitor.tsx     # Live bot monitoring
+│   │   ├── AgentsView.tsx     # AI agents
 │   │   └── SettingsView.tsx
 │   ├── bot/                    # CommandBar, EquityCurve, LiveFeed, PositionsPanel, PortfolioSummary, SessionSummary, StatusStrip, WalletSparkline
 │   ├── market/                 # DualOrderbook, DepthChart, Orderbook
 │   ├── wallet/
 │   ├── agents/
 │   ├── auth/
-│   ├── landing/                # Hero 3D order-flow, secciones de marketing
+│   ├── landing/                # 3D order-flow hero and marketing sections
 │   ├── layout/
 │   ├── common/
-│   └── ui/                      # shadcn primitives
-├── hooks/                        # Ver tabla arriba
+│   └── ui/                     # shadcn primitives
+├── hooks/                      # See table above
 └── integrations/supabase/
 
 supabase/
-├── functions/                     # 16 edge functions — ver tabla arriba
-└── migrations/                    # 44 migraciones (enero → abril 2026)
+├── functions/                  # 16 edge functions — see table above
+└── migrations/                 # 44 migrations (January → April 2026)
 ```
 
 ---
 
-## Stack técnico
+## Technical stack
 
-```
+```text
 Frontend      React + TypeScript + Vite
 3D            Three.js + @react-three/fiber v8 + drei
-Animación     Framer Motion
-Gráficos      Recharts (equity curve, depth chart, sparklines)
-Estado/Data   React Query + React Router
+Animation     Framer Motion
+Charts        Recharts (equity curve, depth chart, sparklines)
+State/Data    React Query + React Router
 Backend/DB    Supabase (Postgres, Auth, Edge Functions, Realtime)
-Trading       Polymarket CLOB API + Subgraph on-chain
+Trading       Polymarket CLOB API + on-chain Subgraph
 Deploy        Vercel
 UI            shadcn/ui + Tailwind CSS
 ```
 
 ---
 
-## Desarrollo local
+## Local development
 
-### Requisitos
+### Requirements
 
-Node.js y npm instalados.
+Node.js and npm installed.
 
-### Instalación
+### Installation
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
+git clone <REPOSITORY_URL>
 cd PolyMaths
 npm install
 npm run dev      # http://localhost:5173
 ```
 
-### Build de producción
+### Production build
 
 ```bash
 npm run build
 ```
 
-Requiere variables de entorno de Supabase y credenciales de acceso a la API
-de Polymarket (CLOB) para que el bot pueda operar en real.
+Supabase environment variables and Polymarket CLOB API credentials are required for the bot to operate in live mode.
 
 ---
 
-## Comunidad
+## Community
 
-Sigue a **Inside4Trading** para actualizaciones, insights de mercado y
-anuncios de nuevas funciones.
+Follow **Inside4Trading** for updates, market insights, and new-feature announcements.
